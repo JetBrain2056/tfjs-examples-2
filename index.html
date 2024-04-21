@@ -1,0 +1,27 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />    
+    <script defer src="./@tensorflow/tfjs/dist/tf.js"></script>        
+    <script defer src="index.js"></script>
+  </head>
+  <body>    
+    <div>Teachable Machine 2.0 - objects detection model</div>
+    <h1 id="info">Load model. Please wait...</h1>
+    <button type="button" id="train">Train</button>   
+    <button type="button" id="run">Run</button>
+    <button type="button" id="save">Save</button>
+    <br>
+    <progress value="0" max="100" style="width:50%"></progress>
+    <br>
+    <div>  
+      <img id="image" />
+      <img id="image1" />
+      <img id="image2" />
+      <img id="image3" />
+      <img id="image4" />
+      <canvas id="canvas" width="800" height="600" ></canvas>
+      <p id="prediction" style="font-size:30px">0</p>
+    </div>    
+  </body>
+</html>
