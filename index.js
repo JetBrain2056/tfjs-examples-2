@@ -296,15 +296,305 @@ saveButton.onclick = async function saveModel() {
   }
   
 }
+
+function _logistic(x) {
+	if (x > 0) {
+	    return (1 / (1 + Math.exp(-x)));
+	} else {
+	    const e = Math.exp(x);
+	    return e / (1 + e);
+	}
+}
+async function ssd_mobilenet(imageT) {
+
+  let modelOut = await model.executeAsync(await tf.cast(imageT, 'int32'));
+
+  height = imageT.shape[1];
+  width  = imageT.shape[2];
+  scores = modelOut[0].dataSync();
+  boxes  = modelOut[1].dataSync();
+
+  // imageT.dispose();
+  // tf.dispose(modelOut);
+
+  minScore    = 0.4;
+  maxNumBoxes = 20;
+  
+  console.log(scores);  
+  console.log(boxes);  
+
+  console.log(modelOut[0].shape[1])
+  console.log(modelOut[0].shape[2])
+     
+  if (tf.getBackend()==='webgl') {
+      tf.setBackend('cpu');
+  }
+  prevBackend = tf.getBackend();
+  console.log(prevBackend);  
+  
+  function calculateMaxScores(scores, numBoxes, numClasses) {
+    let maxes = [];
+    let classes = [];
+    for (let i = 0; i < numBoxes; i++) {
+        let max = Number.MIN_VALUE;
+        let index = -1;
+        for (let j = 0; j < numClasses; j++) {
+            if (scores[i * numClasses + j] > max) {
+                max = scores[i * numClasses + j];
+                index = j;
+            }
+        }
+        maxes[i]   = max;
+        classes[i] = index;
+    }
+    return [maxes, classes];
+  }
+  
+  _a = calculateMaxScores(scores, modelOut[0].shape[1], modelOut[0].shape[2]);
+  maxScores = _a[0];
+  classes   = _a[1];
+  
+  let boxes2  = await tf.tensor2d(boxes, [modelOut[1].shape[1], modelOut[1].shape[3]]);
+  console.log(boxes2);  
+
+  indexTensor = await tf.image.nonMaxSuppressionAsync(boxes2, maxScores, maxNumBoxes, minScore, minScore);  
+
+  indexes = await indexTensor.dataSync();
+  indexTensor.dispose();  
+  
+  console.log(indexes);  
+  // const count = indexes.length;  
+  // console.log(count);  
+  
+  let objects = [];
+  for (let bbox of indexes) {
+
+      const i = indexes.indexOf(bbox);
+
+      const minX = bbox[0] * width; 
+      const minY = bbox[1] * height;  
+      const maxX = bbox[2] * width; 
+      const maxY = bbox[3] * height;   
+      
+      objects.push({
+        left  : minX,
+        top   : minY,
+        right : maxX,
+        bottom: maxY,
+        className: CLASSES[classes[i]],
+        classProb: boxes[i]  
+      })
+  }
+  drawImage(objects);
+}
+async function yolo_tiny(input) {
+
+  const DEFAULT_INPUT_DIM = 416;
+  const DEFAULT_MAX_BOXES = 2048; 
+  const DEFAULT_FILTER_BOXES_THRESHOLD = 0.01;
+  const DEFAULT_IOU_THRESHOLD = 0.4;
+  const DEFAULT_CLASS_PROB_THRESHOLD = 0.5
+  const DEFAULT_MODEL_LOCATION = 'https://raw.githubusercontent.com/MikeShi42/yolo-tiny-tfjs/master/model2.json';
+
+  const YOLO_ANCHORS = tf.tensor2d([
+    [0.57273, 0.677385], [1.87446, 2.06253], [3.33843, 5.47434],
+    [7.88282, 3.52778], [9.77052, 9.16828],
+  ]);
+
+  results = await yolo(input);
+
+  console.log(results);
+
+  drawImage(results);
+
+  async function yolo(
+    input,    
+    {
+      classProbThreshold   = DEFAULT_CLASS_PROB_THRESHOLD,
+      iouThreshold         = DEFAULT_IOU_THRESHOLD,
+      filterBoxesThreshold = DEFAULT_FILTER_BOXES_THRESHOLD,
+      yoloAnchors          = YOLO_ANCHORS,
+      maxBoxes             = DEFAULT_MAX_BOXES,
+      width: widthPx       = DEFAULT_INPUT_DIM,
+      height: heightPx     = DEFAULT_INPUT_DIM,
+      numClasses           = 80,
+      classNames           = CLASSES,
+    } = {},
+  ) {
+    let activation = await model.predict(input);
+
+    const outs = tf.tidy(() => { // Keep as one var to dispose easier
+    
+      const [box_xy, box_wh, box_confidence, box_class_probs ] =
+        yolo_head(activation, yoloAnchors, numClasses);
+
+      const all_boxes = yolo_boxes_to_corners(box_xy, box_wh);
+
+      let [boxes, scores, classes] = yolo_filter_boxes(
+        all_boxes, box_confidence, box_class_probs, filterBoxesThreshold);
+
+      // If all boxes have been filtered out
+      if (boxes == null) {
+        return null;
+      }
+
+      const width  = tf.scalar(widthPx);
+      const height = tf.scalar(heightPx);
+      // const width  = tf.scalar(input.width);
+      // const height = tf.scalar(input.height);
+
+      const image_dims = tf.stack([height, width, height, width]).reshape([1,4]);
+
+      boxes = tf.mul(boxes, image_dims);
+
+      return [boxes, scores, classes];
+    });
+
+    if (outs === null) {
+      return [];
+    }
+
+    const [boxes, scores, classes] = outs;
+
+    const indices = await tf.image.nonMaxSuppressionAsync(boxes, scores, maxBoxes, iouThreshold)
+
+    // Pick out data that wasn't filtered out by NMS and put them into
+    // CPU land to pass back to consumer
+    const classes_indx_arr = await classes.gather(indices).data();
+    const keep_scores      = await scores.gather(indices).data();
+    const boxes_arr        = await boxes.gather(indices).data();
+
+    tf.dispose(outs);
+    indices.dispose();
+
+    const results = [];
+
+    classes_indx_arr.forEach((class_indx, i) => {
+      const classProb = keep_scores[i];
+      if (classProb < classProbThreshold) {
+        return;
+      }
+
+      const className = classNames[class_indx];
+      let [top, left, bottom, right] = [
+        boxes_arr[4 * i],
+        boxes_arr[4 * i + 1],
+        boxes_arr[4 * i + 2],
+        boxes_arr[4 * i + 3],
+      ];
+
+      top    = Math.max(0, top);
+      left   = Math.max(0, left);
+      bottom = Math.min(heightPx, bottom);
+      right  = Math.min(widthPx, right);
+
+      const resultObj = {
+        className,
+        classProb,
+        bottom,
+        top,
+        left,
+        right,
+      };
+
+      results.push(resultObj);
+    });
+
+    return results;
+  }
+  function yolo_filter_boxes(
+    boxes,
+    box_confidence,
+    box_class_probs,
+    threshold
+  ) {
+    const box_scores       = tf.mul(box_confidence, box_class_probs);
+    const box_classes      = tf.argMax(box_scores, -1);
+    const box_class_scores = tf.max(box_scores, -1);
+
+    const prediction_mask = tf.greaterEqual(box_class_scores, tf.scalar(threshold)).as1D();
+
+    const N = prediction_mask.size
+    // linspace start/stop is inclusive.
+    const all_indices = tf.linspace(0, N - 1, N).toInt();
+    const neg_indices = tf.zeros([N], 'int32');
+    const indices = tf.where(prediction_mask, all_indices, neg_indices);
+
+    return [
+      tf.gather(boxes.reshape([N, 4]), indices),
+      tf.gather(box_class_scores.flatten(), indices),
+      tf.gather(box_classes.flatten(), indices),
+    ];
+  }
+  function yolo_boxes_to_corners(box_xy, box_wh) {
+    const two = tf.tensor1d([2.0]);
+    const box_mins = tf.sub(box_xy, tf.div(box_wh, two));
+    const box_maxes = tf.add(box_xy, tf.div(box_wh, two));
+
+    const dim_0 = box_mins.shape[0];
+    const dim_1 = box_mins.shape[1];
+    const dim_2 = box_mins.shape[2];
+    const size = [dim_0, dim_1, dim_2, 1];
+
+    return tf.concat([
+      box_mins.slice([0, 0, 0, 1], size),
+      box_mins.slice([0, 0, 0, 0], size),
+      box_maxes.slice([0, 0, 0, 1], size),
+      box_maxes.slice([0, 0, 0, 0], size),
+    ], 3);
+  }
+  function yolo_head(feats, anchors, num_classes) {
+    const num_anchors = anchors.shape[0];
+
+    const anchors_tensor = tf.reshape(anchors, [1, 1, num_anchors, 2]);
+
+    let conv_dims = feats.shape.slice(1, 3);
+
+    // For later use
+    const conv_dims_0 = conv_dims[0];
+    const conv_dims_1 = conv_dims[1];
+
+    let conv_height_index = tf.range(0, conv_dims[0]);
+    let conv_width_index = tf.range(0, conv_dims[1]);
+    conv_height_index = tf.tile(conv_height_index, [conv_dims[1]])
+
+    conv_width_index = tf.tile(tf.expandDims(conv_width_index, 0), [conv_dims[0], 1]);
+    conv_width_index = tf.transpose(conv_width_index).flatten();
+
+    let conv_index = tf.transpose(tf.stack([conv_height_index, conv_width_index]));
+    conv_index = tf.reshape(conv_index, [conv_dims[0], conv_dims[1], 1, 2])
+    conv_index = tf.cast(conv_index, feats.dtype);
+
+    feats = tf.reshape(feats, [conv_dims[0], conv_dims[1], num_anchors, num_classes + 5]);
+    conv_dims = tf.cast(tf.reshape(tf.tensor1d(conv_dims), [1,1,1,2]), feats.dtype);
+
+    let box_xy = tf.sigmoid(feats.slice([0,0,0,0], [conv_dims_0, conv_dims_1, num_anchors, 2]))
+    let box_wh = tf.exp(feats.slice([0,0,0, 2], [conv_dims_0, conv_dims_1, num_anchors, 2]))
+    const box_confidence = tf.sigmoid(feats.slice([0,0,0, 4], [conv_dims_0, conv_dims_1, num_anchors, 1]))
+    const box_class_probs = tf.softmax(feats.slice([0,0,0, 5],[conv_dims_0, conv_dims_1, num_anchors, num_classes]));
+
+    box_xy = tf.div(tf.add(box_xy, conv_index), conv_dims);
+    box_wh = tf.div(tf.mul(box_wh, anchors_tensor), conv_dims);
+
+    return [ box_xy, box_wh, box_confidence, box_class_probs ];
+  }
+}
 async function oldPredict(inputs) {
 
   const outputs = await model.predict(inputs);
-  console.log(outputs.dataSync()); 
+  console.log(outputs); 
+  // console.log(outputs.dataSync()); 
 	const arrays = !Array.isArray(outputs) ? outputs.array() : Promise.all(outputs.map(t => t.array()));
 	let predictions = await arrays;
   console.log(predictions);  
 
   const ANCHORS = [0.573, 0.677, 1.87, 2.06, 3.34, 5.47, 7.88, 3.53, 9.77, 9.17]; 
+
+  if (tf.getBackend()==='webgl') {
+      tf.setBackend('cpu');
+  }
+  prevBackend = tf.getBackend();
+  console.log(prevBackend);  
 
   if (predictions.length != 3) {
 		console.log( "Post processing..." );
@@ -314,6 +604,11 @@ async function oldPredict(inputs) {
 		const height     = predictions[0].length;
 		const width      = predictions[0][0].length;    
 		const num_class  = channels / num_anchor - 5;
+    const maxNumBoxes = 20;
+
+    console.log(num_anchor);
+    console.log(channels);
+    console.log(num_class);
 
 		let boxes   = [];
 		let scores  = [];
@@ -347,31 +642,17 @@ async function oldPredict(inputs) {
 		scores  = tf.tensor1d(scores);
 		classes = tf.tensor1d(classes);
 
-		const selected_indices = await tf.image.nonMaxSuppressionAsync(boxes, scores, 15);
+		const selected_indices = await tf.image.nonMaxSuppressionAsync(boxes, scores, maxNumBoxes);
+    console.log(selected_indices)
 		predictions = [await boxes.gather(selected_indices).array(), 
                    await scores.gather(selected_indices).array(), 
                    await classes.gather(selected_indices).array()];
 
 	}    
-  // console.log(predictions);  
-  return predictions;
-}
-const runButton = document.getElementById('run');
-runButton.onclick = async function runPredict() {
-  console.log("run predict...");
-  
-  let bufferT, resizedT, imageT;
 
-  bufferT  = await tf.browser.fromPixels(image);  
-  resizedT = await tf.image.resizeNearestNeighbor(bufferT, [416, 416]);
-  imageT   = await resizedT.div(tf.scalar(255.0)).expandDims();
-  // console.log(imageT);     
-
-  let res = await oldPredict(imageT);
-  
-  const boxes   = res[0];
-  const scores  = res[1];
-  const classes = res[2];  
+  const boxes   = predictions[0];
+  const scores  = predictions[1];
+  const classes = predictions[2];  
 
   const width    = image.width;
   const height   = image.height;
@@ -397,13 +678,50 @@ runButton.onclick = async function runPredict() {
   }
   drawImage(objects);
 }
-function _logistic(x) {
-	if (x > 0) {
-	    return (1 / (1 + Math.exp(-x)));
-	} else {
-	    const e = Math.exp(x);
-	    return e / (1 + e);
-	}
+function drawImage(objects) {
+  console.log(objects); 
+
+  const c = document.getElementById('canvas');
+  const context = c.getContext('2d');
+  context.drawImage(image,0,0);
+  context.font = '12px Arial';
+
+  console.log('Number of detections: ', objects.length);
+
+  context.drawImage(image, 0, 0);
+  context.font = '10px Arial';
+
+  for (let obj of objects) {
+
+    x = obj.left;
+    y = obj.top;
+    w = obj.right - obj.left;
+    h = obj.bottom - obj.top;
+
+    context.beginPath();
+    context.rect(x,y,w,h);    
+    context.lineWidth = 2;
+    context.strokeStyle = 'green';
+    context.fillStyle   = 'green';
+    context.stroke();
+    context.fillText(obj.classProb.toFixed(3)+' '+obj.className, x, y);
+  }
+}
+const runButton = document.getElementById('run');
+runButton.onclick = async function runPredict() {
+  console.log("run predict...");
+  
+  let bufferT, resizedT, imageT;
+
+  bufferT  = await tf.browser.fromPixels(image);  
+  resizedT = await tf.image.resizeNearestNeighbor(bufferT, [416, 416]);  
+  imageT   = await resizedT.div(tf.scalar(255.0)).expandDims();
+
+  // console.log(imageT);     
+
+  // await ssd_mobilenet(imageT); 
+  // await yolo_tiny(imageT);
+  await oldPredict(imageT);  
 }
 
 // Load the image model 
