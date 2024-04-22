@@ -393,7 +393,7 @@ async function yolo_tiny(input) {
   const DEFAULT_MAX_BOXES = 2048; 
   const DEFAULT_FILTER_BOXES_THRESHOLD = 0.01;
   const DEFAULT_IOU_THRESHOLD = 0.4;
-  const DEFAULT_CLASS_PROB_THRESHOLD = 0.5
+  const DEFAULT_CLASS_PROB_THRESHOLD = 0.2
   const DEFAULT_MODEL_LOCATION = 'https://raw.githubusercontent.com/MikeShi42/yolo-tiny-tfjs/master/model2.json';
 
   const YOLO_ANCHORS = tf.tensor2d([
@@ -483,10 +483,10 @@ async function yolo_tiny(input) {
         boxes_arr[4 * i + 3],
       ];
 
-      top    = Math.max(0, top);
-      left   = Math.max(0, left);
-      bottom = Math.min(heightPx, bottom);
-      right  = Math.min(widthPx, right);
+      top    = Math.max(0, top) / 416 * image.height;
+      left   = Math.max(0, left) / 416 * image.width;
+      bottom = Math.min(heightPx, bottom) / 416 * image.height;
+      right  = Math.min(widthPx, right) / 416 * image.width;
 
       const resultObj = {
         className,
