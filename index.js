@@ -721,7 +721,7 @@ runButton.onclick = async function runPredict() {
 
   bufferT  = await tf.browser.fromPixels(image);  
   resizedT = await tf.image.resizeNearestNeighbor(bufferT, [416, 416]);  
-  imageT   = await bufferT.div(tf.scalar(255.0)).expandDims();  
+  imageT   = await resizedT.div(tf.scalar(255.0)).expandDims();  
 
   // console.log(imageT);     
 
