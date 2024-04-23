@@ -305,32 +305,27 @@ function _logistic(x) {
 	    return e / (1 + e);
 	}
 }
-async function ssd_mobilenet(imageT) {
+async function ssd_mobilenet(bufferT) {
+
+  const minScore    = 0.2;
+  const maxNumBoxes = 15;
+
+  const imageT = await bufferT.expandDims();
 
   let modelOut = await model.executeAsync(await tf.cast(imageT, 'int32'));
+
+  let height, width, scores, boxes;
 
   height = imageT.shape[1];
   width  = imageT.shape[2];
   scores = modelOut[0].dataSync();
   boxes  = modelOut[1].dataSync();
 
-  // imageT.dispose();
-  // tf.dispose(modelOut);
-
-  minScore    = 0.4;
-  maxNumBoxes = 20;
+  imageT.dispose();
+  tf.dispose(modelOut);
   
   console.log(scores);  
   console.log(boxes);  
-
-  console.log(modelOut[0].shape[1])
-  console.log(modelOut[0].shape[2])
-     
-  if (tf.getBackend()==='webgl') {
-      tf.setBackend('cpu');
-  }
-  prevBackend = tf.getBackend();
-  console.log(prevBackend);  
   
   function calculateMaxScores(scores, numBoxes, numClasses) {
     let maxes = [];
@@ -350,39 +345,51 @@ async function ssd_mobilenet(imageT) {
     return [maxes, classes];
   }
   
-  _a = calculateMaxScores(scores, modelOut[0].shape[1], modelOut[0].shape[2]);
-  maxScores = _a[0];
-  classes   = _a[1];
+  const _a = calculateMaxScores(scores, modelOut[0].shape[1], modelOut[0].shape[2]);
+  const maxScores = _a[0];
+  const classes   = _a[1];
+
+  console.log(maxScores)
+  console.log(classes)
+
+  prevBackend = tf.getBackend();
+  if (tf.getBackend()==='webgl') {
+      tf.setBackend('cpu');
+  }
   
   let boxes2  = await tf.tensor2d(boxes, [modelOut[1].shape[1], modelOut[1].shape[3]]);
-  console.log(boxes2);  
+  // console.log(boxes2);  
 
-  indexTensor = await tf.image.nonMaxSuppressionAsync(boxes2, maxScores, maxNumBoxes, minScore, minScore);  
+  const indexTensor = await tf.image.nonMaxSuppressionAsync(boxes2, maxScores, maxNumBoxes, minScore, minScore);  
 
-  indexes = await indexTensor.dataSync();
+  const indexes = indexTensor.dataSync();
   indexTensor.dispose();  
+
+  tf.setBackend(prevBackend)
   
-  console.log(indexes);  
-  // const count = indexes.length;  
-  // console.log(count);  
-  
+  const count = indexes.length;  
+  console.log(count);  
+       
   let objects = [];
-  for (let bbox of indexes) {
+  for (let i = 0; i < count; i++) {
 
-      const i = indexes.indexOf(bbox);
+      const bbox = []
+      for (let j = 0; j < 4; j++) {
+        bbox[j] = boxes[indexes[i] * 4 + j]
+      }
 
-      const minX = bbox[0] * width; 
-      const minY = bbox[1] * height;  
-      const maxX = bbox[2] * width; 
-      const maxY = bbox[3] * height;   
+      const minY = bbox[0] * height; 
+      const minX = bbox[1] * width;  
+      const maxY = bbox[2] * height; 
+      const maxX = bbox[3] * width;   
       
       objects.push({
         left  : minX,
         top   : minY,
         right : maxX,
         bottom: maxY,
-        className: CLASSES[classes[i]],
-        classProb: boxes[i]  
+        className: CLASSES[classes[indexes[i]]],
+        classProb: boxes[indexes[i]]  
       })
   }
   drawImage(objects);
@@ -392,8 +399,8 @@ async function yolo_tiny(input) {
   const DEFAULT_INPUT_DIM = 416;
   const DEFAULT_MAX_BOXES = 2048; 
   const DEFAULT_FILTER_BOXES_THRESHOLD = 0.01;
-  const DEFAULT_IOU_THRESHOLD = 0.4;
-  const DEFAULT_CLASS_PROB_THRESHOLD = 0.2
+  const DEFAULT_IOU_THRESHOLD = 0.2;
+  const DEFAULT_CLASS_PROB_THRESHOLD = 0.2;
   const DEFAULT_MODEL_LOCATION = 'https://raw.githubusercontent.com/MikeShi42/yolo-tiny-tfjs/master/model2.json';
 
   const YOLO_ANCHORS = tf.tensor2d([
@@ -440,8 +447,6 @@ async function yolo_tiny(input) {
 
       const width  = tf.scalar(widthPx);
       const height = tf.scalar(heightPx);
-      // const width  = tf.scalar(input.width);
-      // const height = tf.scalar(input.height);
 
       const image_dims = tf.stack([height, width, height, width]).reshape([1,4]);
 
@@ -582,10 +587,9 @@ async function yolo_tiny(input) {
 async function oldPredict(inputs) {
 
   const outputs = await model.predict(inputs);
+
   console.log(outputs); 
-  // console.log(outputs.dataSync()); 
-	const arrays = !Array.isArray(outputs) ? outputs.array() : Promise.all(outputs.map(t => t.array()));
-	let predictions = await arrays;
+  let predictions = await outputs.array();
   console.log(predictions);  
 
   const ANCHORS = [0.573, 0.677, 1.87, 2.06, 3.34, 5.47, 7.88, 3.53, 9.77, 9.17]; 
@@ -604,7 +608,7 @@ async function oldPredict(inputs) {
 		const height     = predictions[0].length;
 		const width      = predictions[0][0].length;    
 		const num_class  = channels / num_anchor - 5;
-    const maxNumBoxes = 20;
+    const maxNumBoxes = 15;
 
     console.log(num_anchor);
     console.log(channels);
@@ -617,15 +621,17 @@ async function oldPredict(inputs) {
 		for (var grid_y = 0; grid_y < height; grid_y++) {
 			for (var grid_x = 0; grid_x < width; grid_x++) {
 				let offset = 0;
+        const pixl = predictions[0][grid_y][grid_x];
 
-				for (var i = 0; i < num_anchor; i++) {
-					let x = (_logistic(predictions[0][grid_y][grid_x][offset++]) + grid_x) / width;
-					let y = (_logistic(predictions[0][grid_y][grid_x][offset++]) + grid_y) / height;
-					let w = Math.exp(predictions[0][grid_y][grid_x][offset++]) * ANCHORS[i * 2] / width;
-					let h = Math.exp(predictions[0][grid_y][grid_x][offset++]) * ANCHORS[i * 2 + 1] / height;
+				for (var i = 0; i < num_anchor; i++) {          
+          
+					let x = (_logistic(pixl[offset++]) + grid_x) / width;
+					let y = (_logistic(pixl[offset++]) + grid_y) / height;
+					let w = Math.exp(pixl[offset++]) * ANCHORS[i * 2] / width;
+					let h = Math.exp(pixl[offset++]) * ANCHORS[i * 2 + 1] / height;
 
-					let objectness          = tf.scalar(_logistic(predictions[0][grid_y][grid_x][offset++]));
-					let class_probabilities = tf.tensor1d(predictions[0][grid_y][grid_x].slice(offset, offset + num_class)).softmax();
+					let objectness          = tf.scalar(_logistic(pixl[offset++]));
+					let class_probabilities = tf.tensor1d(pixl.slice(offset, offset + num_class)).softmax();
 					offset += num_class;
 
 					class_probabilities = class_probabilities.mul(objectness);
@@ -715,11 +721,13 @@ runButton.onclick = async function runPredict() {
 
   bufferT  = await tf.browser.fromPixels(image);  
   resizedT = await tf.image.resizeNearestNeighbor(bufferT, [416, 416]);  
-  imageT   = await resizedT.div(tf.scalar(255.0)).expandDims();
+  imageT   = await bufferT.div(tf.scalar(255.0)).expandDims();  
 
   // console.log(imageT);     
 
-  // await ssd_mobilenet(imageT); 
+  //*** Graph Models ***
+  // await ssd_mobilenet(bufferT); 
+  //*** Layers Models ***
   // await yolo_tiny(imageT);
   await oldPredict(imageT);  
 }
@@ -733,13 +741,17 @@ async function init() {
   //*** Graph Models ***
   // const URL = 'https://storage.googleapis.com/tfjs-models/savedmodel/ssdlite_mobilenet_v2/model.json';
   // const URL = 'https://storage.googleapis.com/tfjs-models/savedmodel/ssd_mobilenet_v2/model.json';  
+  // const URL = 'https://storage.googleapis.com/tfjs-models/savedmodel/ssd_mobilenet_v1/model.json';  
   // const URL = 'https://tfhub.dev/google/tfjs-model/imagenet/mobilenet_v3_small_100_224/feature_vector/5/default/1';   
 
   // model = await tf.loadGraphModel(URL);  
+
+  // console.log(model.inputs); 
+  // console.log(model.outputs); 
+
   // let res = await model.executeAsync(await tf.zeros([1, 416, 416, 3], 'int32'));
 
   // console.log(res); 
-  // console.log(res.dataSync());
 
   // scores = res[0];
   // boxes  = res[1];
@@ -748,9 +760,9 @@ async function init() {
   // console.log(boxes);  
 
   //*** Layers Models ***
-  // const URL = 'https://raw.githubusercontent.com/MikeShi42/yolo-tiny-tfjs/master/model2.json';
+  const URL = 'https://raw.githubusercontent.com/MikeShi42/yolo-tiny-tfjs/master/model2.json';
   // const URL = 'https://storage.googleapis.com/tfjs-examples/simple-object-detection/dist/object_detection_model/model.json';  
-  const URL = "./model/model.json";  
+  // const URL = "./model/model.json";  
 
   model = await tf.loadLayersModel(URL);  
 
