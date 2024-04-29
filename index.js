@@ -103,7 +103,7 @@ trainButton.onclick = async function() {
   const img_h=grid_h*cell_h;
   const kernel_r=tf.regularizers.l2({l2:0.0005});
 
-  const trainModel = tf.sequential();
+  // const trainModel = tf.sequential();
   
   // trainModel.add(tf.layers.conv2d({filters:256, kernelSize: [7, 7], strides:[1, 1], inputShape :[img_h, img_w, 3], activation:'relu'}))
   // trainModel.add(tf.layers.maxPooling2d({poolSize:[2, 2], strides:[2, 2], padding : 'same'}))
@@ -138,26 +138,25 @@ trainButton.onclick = async function() {
   // trainModel.add(tf.layers.conv2d({filters:1024, kernelSize: [3, 3], activation:'relu', kernelRegularizer:kernel_r}))
   // trainModel.add(tf.layers.conv2d({filters:1024, kernelSize: [3, 3], activation:'relu', kernelRegularizer:kernel_r}))
 
-  trainModel.add(tf.layers.inputLayer({inputShape :[img_h, img_w, 3]}))
-  trainModel.add(tf.layers.conv2d({filters:8,   kernelSize: [3, 3], strides:[2, 2], padding : 'same', activation:'linear'}))
+  // trainModel.add(tf.layers.inputLayer({inputShape :[img_h, img_w, 3]}))
+  // trainModel.add(tf.layers.conv2d({filters:8,   kernelSize: [3, 3], strides:[2, 2], padding : 'same', activation:'linear'}))
   // trainModel.add(tf.layers.dense({units:64, inputShape :[img_h, img_w, 3]}))
-  trainModel.add(tf.layers.flatten())
+  // trainModel.add(tf.layers.flatten())
   // trainModel.add(tf.layers.dense({units:1024}))
   // trainModel.add(tf.layers.dropout({rate:0.5}))
   // trainModel.add(tf.layers.dense({units:128, activation:'sigmoid'}))
   // trainModel.add(tf.layers.dense({units:128}))
-  trainModel.add(tf.layers.reshape({targetShape:[7,7,30]}))
+  // trainModel.add(tf.layers.reshape({targetShape:[7,7,30]}))
 
   // trainModel.summary();
 
+  // const outputModel = tf.sequential();
+  // outputModel.add(tf.layers.flatten({inputShape :[13, 13, 425]}))  
+  // outputModel.add(tf.layers.dense({units:64, activation: 'relu' }))
+  // outputModel.add(tf.layers.dense({units:4}))  
 
-  const outputModel = tf.sequential();
-  outputModel.add(tf.layers.flatten({inputShape :[13, 13, 425]}))  
-  outputModel.add(tf.layers.dense({units:64, activation: 'relu' }))
-  outputModel.add(tf.layers.dense({units:5}))  
-
-  const newOutput = outputModel.apply(model.outputs[0]);
-  model = tf.model({inputs: model.inputs, outputs: newOutput});  
+  // const newOutput = outputModel.apply(model.outputs[0]);
+  // model = tf.model({inputs: model.inputs, outputs: newOutput});  
 
   const optimizer = tf.train.adam();
   model.compile({
@@ -181,43 +180,43 @@ trainButton.onclick = async function() {
     return imageT;    
   }
   
-  imageFeatures = await calculateImageFeatures(image1);  
+  // imageFeatures = await calculateImageFeatures(image1);  
   // console.log(imageFeatures);
-  trainingDataInputs.push(imageFeatures);
+  // trainingDataInputs.push(imageFeatures);
   // output = model.predict(imageFeatures);
   // console.log(output);
   // console.log(output.dataSync());
   // trainingDataOutputs.push(output);
 
-  imageFeatures = await calculateImageFeatures(image2);  
-  trainingDataInputs.push(imageFeatures);
+  // imageFeatures = await calculateImageFeatures(image2);  
+  // trainingDataInputs.push(imageFeatures);
   // output = model.predict(imageFeatures);    
   // trainingDataOutputs.push(output);
   
-  imageFeatures = await calculateImageFeatures(image3);  
-  trainingDataInputs.push(imageFeatures);
+  // imageFeatures = await calculateImageFeatures(image3);  
+  // trainingDataInputs.push(imageFeatures);
   // output = model.predict(imageFeatures);    
   // trainingDataOutputs.push(output);
 
-  imageFeatures = await calculateImageFeatures(image4);   
-  trainingDataInputs.push(imageFeatures);
+  // imageFeatures = await calculateImageFeatures(image4);   
+  // trainingDataInputs.push(imageFeatures);
   // output = model.predict(imageFeatures);    
   // trainingDataOutputs.push(output);
   
   console.log(trainingDataInputs);
 
-  gatherDataState = 0;
-  trainingDataOutputs.push(gatherDataState);
-  trainingDataOutputs.push(gatherDataState);
-  gatherDataState = 1;
-  trainingDataOutputs.push(gatherDataState);
-  trainingDataOutputs.push(gatherDataState);
-  console.log(trainingDataOutputs);
+  // gatherDataState = 0;
+  // trainingDataOutputs.push(gatherDataState);
+  // trainingDataOutputs.push(gatherDataState);
+  // gatherDataState = 1;
+  // trainingDataOutputs.push(gatherDataState);
+  // trainingDataOutputs.push(gatherDataState);
+  // console.log(trainingDataOutputs);
 
   info.innerText = 'Training model. Please wait...';
   // progress.style.display = 'block';
   
-  const inputsAsTensor  = await tf.concat(trainingDataInputs);
+  // const inputsAsTensor  = await tf.concat(trainingDataInputs);
   // const targetTensor    = await tf.concat(trainingDataOutputs);
   // const targetTensor    = await tf.oneHot(tf.tensor1d(trainingDataOutputs, 'int32'), 2);
 
@@ -230,8 +229,10 @@ trainButton.onclick = async function() {
   // targetTensor.push(target);
   // target = tf.tensor1d([1].concat(boundingBox));
   // targetTensor.push(target);
-
-
+	
+  inputsAsTensor = tf.zeros([1,416,416,3]);
+  targetTensor = tf.zeros([1,13,13,425]);
+	
   console.log(inputsAsTensor);
   console.log(targetTensor);
   
