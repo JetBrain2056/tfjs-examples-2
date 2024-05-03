@@ -180,58 +180,58 @@ trainButton.onclick = async function() {
     return imageT;    
   }
   
-  // imageFeatures = await calculateImageFeatures(image1);  
-  // console.log(imageFeatures);
+  // imageFeatures = await calculateImageFeatures(image1);    
   // trainingDataInputs.push(imageFeatures);
-  // output = model.predict(imageFeatures);
-  // console.log(output);
-  // console.log(output.dataSync());
-  // trainingDataOutputs.push(output);
-
   // imageFeatures = await calculateImageFeatures(image2);  
   // trainingDataInputs.push(imageFeatures);
-  // output = model.predict(imageFeatures);    
-  // trainingDataOutputs.push(output);
-  
   // imageFeatures = await calculateImageFeatures(image3);  
-  // trainingDataInputs.push(imageFeatures);
-  // output = model.predict(imageFeatures);    
-  // trainingDataOutputs.push(output);
-
+  // trainingDataInputs.push(imageFeatures);  
   // imageFeatures = await calculateImageFeatures(image4);   
-  // trainingDataInputs.push(imageFeatures);
-  // output = model.predict(imageFeatures);    
-  // trainingDataOutputs.push(output);
+  // trainingDataInputs.push(imageFeatures);    
   
   console.log(trainingDataInputs);
-
-  // gatherDataState = 0;
-  // trainingDataOutputs.push(gatherDataState);
-  // trainingDataOutputs.push(gatherDataState);
-  // gatherDataState = 1;
-  // trainingDataOutputs.push(gatherDataState);
-  // trainingDataOutputs.push(gatherDataState);
-  // console.log(trainingDataOutputs);
 
   info.innerText = 'Training model. Please wait...';
   // progress.style.display = 'block';
   
-  // const inputsAsTensor  = await tf.concat(trainingDataInputs);
-  // const targetTensor    = await tf.concat(trainingDataOutputs);
-  // const targetTensor    = await tf.oneHot(tf.tensor1d(trainingDataOutputs, 'int32'), 2);
-
-  // targetTensor = [];
-  // target = tf.tensor1d([0].concat(boundingBox));  
-  // targetTensor.push(target);
-  // target = tf.tensor1d([0].concat(boundingBox));
-  // targetTensor.push(target);
-  // target = tf.tensor1d([1].concat(boundingBox));
-  // targetTensor.push(target);
-  // target = tf.tensor1d([1].concat(boundingBox));
-  // targetTensor.push(target);
+  const inputsAsTensor  = await tf.concat(trainingDataInputs);  
 	
-  inputsAsTensor = tf.zeros([1,416,416,3]);
-  targetTensor = tf.zeros([1,13,13,425]);
+ // inputsAsTensor = tf.zeros([1,416,416,3]);  
+ // targetTensor = tf.zeros([4,13,13,425]);
+
+  numClasses = 4;
+  for (let c=0; c<numClasses;c++) {
+    pixl = [];    
+    for (let xx=0; xx<169; xx++) {    
+      for (let i=0; i<5; i++) {
+        x = 0
+        y = 0 
+        w = 0 
+        h = 0
+        o = 0
+        pixl.push(x)
+        pixl.push(y)
+        pixl.push(w)
+        pixl.push(h)
+        pixl.push(o)
+        
+        for (let ii=0; ii<80; ii++) {
+          if (ii===c) {
+            a = 1
+          } else {
+            a = 0
+          }
+          pixl.push(a)
+        }      
+      }   
+    }
+    console.log(pixl)
+  
+    trainingDataOutputs.push(await tf.tensor(pixl, [1,13,13,425], 'int32'));
+  }
+    
+  targetTensor    = await tf.concat(trainingDataOutputs);  
+  console.log(targetTensor.dataSync())
 	
   console.log(inputsAsTensor);
   console.log(targetTensor);
