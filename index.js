@@ -95,13 +95,13 @@ const trainButton = document.getElementById('train');
 trainButton.onclick = async function() {
 
   // const nb_boxes=1;
-  const grid_w=7;
-  const grid_h=7;
-  const cell_w=64;
-  const cell_h=64;
-  const img_w=grid_w*cell_w;
-  const img_h=grid_h*cell_h;
-  const kernel_r=tf.regularizers.l2({l2:0.0005});
+  // const grid_w=7;
+  // const grid_h=7;
+  // const cell_w=64;
+  // const cell_h=64;
+  // const img_w=grid_w*cell_w;
+  // const img_h=grid_h*cell_h;
+  // const kernel_r=tf.regularizers.l2({l2:0.0005});
 
   // const trainModel = tf.sequential();
   
@@ -180,14 +180,14 @@ trainButton.onclick = async function() {
     return imageT;    
   }
   
-  // imageFeatures = await calculateImageFeatures(image1);    
-  // trainingDataInputs.push(imageFeatures);
-  // imageFeatures = await calculateImageFeatures(image2);  
-  // trainingDataInputs.push(imageFeatures);
-  // imageFeatures = await calculateImageFeatures(image3);  
-  // trainingDataInputs.push(imageFeatures);  
-  // imageFeatures = await calculateImageFeatures(image4);   
-  // trainingDataInputs.push(imageFeatures);    
+  imageFeatures = await calculateImageFeatures(image1);    
+  trainingDataInputs.push(imageFeatures);
+  imageFeatures = await calculateImageFeatures(image2);  
+  trainingDataInputs.push(imageFeatures);
+  imageFeatures = await calculateImageFeatures(image3);  
+  trainingDataInputs.push(imageFeatures);  
+  imageFeatures = await calculateImageFeatures(image4);   
+  trainingDataInputs.push(imageFeatures);    
   
   console.log(trainingDataInputs);
 
@@ -199,14 +199,14 @@ trainButton.onclick = async function() {
  // inputsAsTensor = tf.zeros([1,416,416,3]);  
  // targetTensor = tf.zeros([4,13,13,425]);
 
-  numClasses = 4;
+ numClasses = 4;
   for (let c=0; c<numClasses;c++) {
     pixl = [];    
     for (let xx=0; xx<169; xx++) {    
       for (let i=0; i<5; i++) {
         x = 0
         y = 0 
-        w = 0 
+        w = 0
         h = 0
         o = 0
         pixl.push(x)
@@ -215,19 +215,27 @@ trainButton.onclick = async function() {
         pixl.push(h)
         pixl.push(o)
         
-        for (let ii=0; ii<80; ii++) {
-          if (ii===c) {
-            a = 1
-          } else {
-            a = 0
-          }
-          pixl.push(a)
+        for (let ii=0; ii<80; ii++) {                  
+          pixl.push(0)
         }      
       }   
     }
-    console.log(pixl)
+    
+    pixl[35701] = 416/100
+    pixl[35702] = 416/300 
+    pixl[35703] = 416/216
+    pixl[35704] = 416/416
+    pixl[35705] = 1
+    
+    if (c===0||c===1) {      
+      pixl[35706] = 1
+    } else {
+      pixl[35707] = 1
+    }
   
-    trainingDataOutputs.push(await tf.tensor(pixl, [1,13,13,425], 'int32'));
+    console.log(pixl)
+    
+    trainingDataOutputs.push(await tf.tensor(pixl, [1,13,13,425], 'float32'));
   }
     
   targetTensor    = await tf.concat(trainingDataOutputs);  
