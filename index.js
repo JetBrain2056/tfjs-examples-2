@@ -199,8 +199,8 @@ trainButton.onclick = async function() {
  // inputsAsTensor = tf.zeros([1,416,416,3]);  
  // targetTensor = tf.zeros([4,13,13,425]);
 
- numClasses = 4;
-  for (let c=0; c<numClasses;c++) {
+numImg = 4; 
+  for (let c=0; c<numImg;c++) {
     pixl = [];    
     for (let xx=0; xx<169; xx++) {    
       for (let i=0; i<5; i++) {
@@ -220,20 +220,31 @@ trainButton.onclick = async function() {
         }      
       }   
     }
-    
-    pixl[35701] = 416/100
-    pixl[35702] = 416/300 
-    pixl[35703] = 416/216
-    pixl[35704] = 416/416
-    pixl[35705] = 1
-    
+        
     if (c===0||c===1) {      
+      xmin = 100 
+      xmax = 316
+      ymin = 1
+      ymax = 416      
+      pixl[35705] = 1
       pixl[35706] = 1
     } else {
+      xmin = 100 
+      xmax = 316
+      ymin = 1
+      ymax = 416    
+      pixl[35705] = 1
       pixl[35707] = 1
     }
+    pixl[35701] = (xmin + xmax)/2/416
+    pixl[35702] = (ymin + ymax)/2/416
+    pixl[35703] = (xmax - xmin)/416
+    pixl[35704] = (ymax - ymin)/416
   
-    console.log(pixl)
+    console.log(pixl[35701])
+    console.log(pixl[35702])
+    console.log(pixl[35703])
+    console.log(pixl[35704]) 	    
     
     trainingDataOutputs.push(await tf.tensor(pixl, [1,13,13,425], 'float32'));
   }
