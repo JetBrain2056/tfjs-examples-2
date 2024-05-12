@@ -221,30 +221,64 @@ numImg = 4;
       }   
     }
         
-    if (c===0||c===1) {      
-      xmin = 100 
-      xmax = 316
-      ymin = 1
-      ymax = 416      
-      pixl[35705] = 1
-      pixl[35706] = 1
-    } else {
-      xmin = 100 
-      xmax = 316
-      ymin = 1
-      ymax = 416    
-      pixl[35705] = 1
-      pixl[35707] = 1
+    //const ANCHORS = [0.573, 0.677, 1.87, 2.06, 3.34, 5.47, 7.88, 3.53, 9.77, 9.17]; 
+    function _alogistic(e) {      
+      __x = (1-1/e)/2.718
+      return __x
     }
-    pixl[35701] = (xmin + xmax)/2/416
-    pixl[35702] = (ymin + ymax)/2/416
-    pixl[35703] = (xmax - xmin)/416
-    pixl[35704] = (ymax - ymin)/416
-  
-    console.log(pixl[35701])
-    console.log(pixl[35702])
-    console.log(pixl[35703])
-    console.log(pixl[35704]) 	    
+
+    const x = xmin/416;
+    const y = ymin/416;
+    const w = (xmax - xmin)/416;
+    const h = (ymax - ymin)/416;
+
+    console.log(x)
+    console.log(y)
+    console.log(w)
+    console.log(h)
+    
+    // pixl[0] = 0.01
+    // pixl[1] = -0.01
+    // pixl[2] = 0.18
+    // pixl[3] = 0.52
+
+    minX = x + w * 2;
+    minY = y + h * 2;
+    maxX = x - w * 2;
+    maxY = y - h * 2;
+
+    // console.log(minX)
+    // console.log(minY)
+    // console.log(maxX)
+    // console.log(maxY)
+
+    let offset = 0;
+    for (xg = 0; xg<13; xg++) {
+      for (yg = 0; yg<13; yg++) {        
+        for (p = 0; p<5; p++) {
+          if (xg===1&&yg===3&&p===2) {
+            pixl[offset++] = (_alogistic(minX)-xg)*13
+            pixl[offset++] = (_alogistic(minY)-yg)*13
+            pixl[offset++] = maxX/Math.E*13
+            pixl[offset++] = maxY/Math.E*13         
+            // pixl[offset++] = -1.097084879875183
+            // pixl[offset++] = -0.6710431575775146
+            // pixl[offset++] = -0.40344923734664917
+            // pixl[offset++] = 0.25029298663139343 
+            pixl[offset++] = 1
+
+            if (c===0||c===1) {                                
+              pixl[offset]=1
+            } else if (c===2||c===3) {           
+              pixl[offset+1]=1
+            }      
+          } else {       
+            offset += 5;
+          }
+          offset += 80;
+        }
+      }
+    }	    
     
     trainingDataOutputs.push(await tf.tensor(pixl, [1,13,13,425], 'float32'));
   }
