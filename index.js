@@ -237,34 +237,32 @@ numImg = 4;
     console.log(w)
     console.log(h)
     
-    // pixl[0] = 0.01
-    // pixl[1] = -0.01
-    // pixl[2] = 0.18
-    // pixl[3] = 0.52
-
     minX = x + w * 2;
     minY = y + h * 2;
     maxX = x - w * 2;
     maxY = y - h * 2;
 
-    // console.log(minX)
-    // console.log(minY)
-    // console.log(maxX)
-    // console.log(maxY)
+    console.log(minX)
+    console.log(minY)
+    console.log(maxX)
+    console.log(maxY)
+
+    //Coordinates to scores example
+    // minX = 0.01  => -1.097084879875183
+    // minY = -0.01 => -0.6710431575775146
+    // maxX = 0.18  => -0.40344923734664917
+    // maxY = 0.52  => 0.25029298663139343 
 
     let offset = 0;
     for (xg = 0; xg<13; xg++) {
       for (yg = 0; yg<13; yg++) {        
         for (p = 0; p<5; p++) {
-          if (xg===1&&yg===3&&p===2) {
+          //The center of the trained image
+          if (xg===1&&yg===3&&p===2) { 
             pixl[offset++] = (_alogistic(minX)-xg)*13
             pixl[offset++] = (_alogistic(minY)-yg)*13
             pixl[offset++] = maxX/Math.E*13
             pixl[offset++] = maxY/Math.E*13         
-            // pixl[offset++] = -1.097084879875183
-            // pixl[offset++] = -0.6710431575775146
-            // pixl[offset++] = -0.40344923734664917
-            // pixl[offset++] = 0.25029298663139343 
             pixl[offset++] = 1
 
             if (c===0||c===1) {                                
@@ -278,7 +276,7 @@ numImg = 4;
           offset += 80;
         }
       }
-    }	    
+    }
     
     trainingDataOutputs.push(await tf.tensor(pixl, [1,13,13,425], 'float32'));
   }
