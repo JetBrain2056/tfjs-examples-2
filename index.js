@@ -221,11 +221,11 @@ numImg = 4;
       }   
     }
         
-    //const ANCHORS = [0.573, 0.677, 1.87, 2.06, 3.34, 5.47, 7.88, 3.53, 9.77, 9.17]; 
-    function _alogistic(e) {      
-      __x = (1-1/e)/2.718
-      return __x
-    }
+    const ANCHORS = [0.573, 0.677, 1.87, 2.06, 3.34, 5.47, 7.88, 3.53, 9.77, 9.17]; 
+    // function _alogistic(e) {      
+    //   __x = (1-1/e)/2.718
+    //   return __x
+    // }
 
     const x = xmin/416;
     const y = ymin/416;
@@ -237,21 +237,24 @@ numImg = 4;
     console.log(w)
     console.log(h)
     
-    minX = x + w * 2;
-    minY = y + h * 2;
-    maxX = x - w * 2;
-    maxY = y - h * 2;
+    // minX = x + w * 2;
+    // minY = y + h * 2;
+    // maxX = x - w * 2;
+    // maxY = y - h * 2;
 
-    console.log(minX)
-    console.log(minY)
-    console.log(maxX)
-    console.log(maxY)
+    // console.log(minX)
+    // console.log(minY)
+    // console.log(maxX)
+    // console.log(maxY)
 
     //Coordinates to scores example
     // minX = 0.01  => -1.097084879875183
     // minY = -0.01 => -0.6710431575775146
     // maxX = 0.18  => -0.40344923734664917
     // maxY = 0.52  => 0.25029298663139343 
+
+    console.log(Math.log(0.18/ANCHORS[2 * 2] * 13))
+    console.log(Math.log(0.52/ANCHORS[2 * 2 + 1] * 13))
 
     let offset = 0;
     for (xg = 0; xg<13; xg++) {
@@ -261,8 +264,8 @@ numImg = 4;
           if (xg===1&&yg===3&&p===2) { 
             pixl[offset++] = (_alogistic(minX)-xg)*13
             pixl[offset++] = (_alogistic(minY)-yg)*13
-            pixl[offset++] = maxX/Math.E*13
-            pixl[offset++] = maxY/Math.E*13         
+            pixl[offset++] = Math.log(w/ANCHORS[p * 2] * 13)
+            pixl[offset++] = Math.log(h/ANCHORS[p * 2 + 1] * 13)        
             pixl[offset++] = 1
 
             if (c===0||c===1) {                                
