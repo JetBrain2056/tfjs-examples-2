@@ -249,8 +249,9 @@ numImg = 4;
         for (p = 0; p<5; p++) {
           //The center of the trained image
           if (xg===1&&yg===3&&p===2) { 
-            pixl[offset++] = _alogistic(x)-xg
-            pixl[offset++] = _alogistic(y)-yg
+            //Transfer to 0~1 corresponding to each grid cell:
+            pixl[offset++] = Math.log(x + w/2) - p
+            pixl[offset++] = Math.log(y + h/2) - p
             pixl[offset++] = Math.log(w/ANCHORS[p * 2])
             pixl[offset++] = Math.log(h/ANCHORS[p * 2 + 1])        
             pixl[offset++] = 1
