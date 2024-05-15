@@ -199,38 +199,50 @@ trainButton.onclick = async function() {
  // inputsAsTensor = tf.zeros([1,416,416,3]);  
  // targetTensor = tf.zeros([4,13,13,425]);
 
-numImg = 4; 
-  for (let c=0; c<numImg;c++) {
+//
+  let img = [];
+  img[0] = {class:0, xmin:0, ymin:0, xmax:62, ymax:209}
+  img[1] = {class:0, xmin:0, ymin:0, xmax:69, ymax:211}  
+  img[2] = {class:1, xmin:0, ymin:0, xmax:59, ymax:180}
+  img[3] = {class:1, xmin:0, ymin:0, xmax:62, ymax:181}
+  
+  for (let c of img) {
     pixl = [];    
     for (let xx=0; xx<169; xx++) {    
       for (let i=0; i<5; i++) {
-        x = 0
-        y = 0 
-        w = 0
-        h = 0
+     
+        _x = 0
+        _y = 0
+        _w = 0
+        _h = 0
         o = 0
-        pixl.push(x)
-        pixl.push(y)
-        pixl.push(w)
-        pixl.push(h)
+        pixl.push(_x)
+        pixl.push(_y)
+        pixl.push(_w)
+        pixl.push(_h)
         pixl.push(o)
         
-        for (let ii=0; ii<80; ii++) {                  
-          pixl.push(0)
-        }      
-      }   
-    }
-        
+        for (let ii=0; ii<80; ii++) {                               
+            pixl.push(0)
+        }
+      }      
+    }   
+    
     const ANCHORS = [0.573, 0.677, 1.87, 2.06, 3.34, 5.47, 7.88, 3.53, 9.77, 9.17]; 
-    function _alogistic(e) {          
-      return Math.log(1-1/e)
+    function _alogistic(e) {      
+      // if (e===0||e<0) {
+      //   return Math.log(e - 1/e)
+      // } else {
+      //   return Math.log(1 - 1/e)
+      // }
+      return Math.log(e)
     }
 
     //Normalize in 0~1 and transfer to feature map size:
-    const x = xmin/416*13;
-    const y = ymin/416*13;
-    const w = (xmax - xmin)/416*13;
-    const h = (ymax - ymin)/416*13;
+    const x = c.xmin/416*13;
+    const y = c.ymin/416*13;
+    const w = (c.xmax - c.xmin)/416*13;
+    const h = (c.ymax - c.ymin)/416*13;
 
     // console.log(x)
     // console.log(y)
@@ -238,27 +250,36 @@ numImg = 4;
     // console.log(h)
 
     //Normalize coordinates to scores example
-    // x1 = 0.01  => -1.097084879875183
-    // y1 = -0.01 => -0.6710431575775146
-    // w1 = 0.18  => -0.40344923734664917
-    // h1 = 0.52  => 0.25029298663139343 
+    // x1 = 0.010362043045461178  => -1.097084879875183 
+    // y1 = -0.013428867794573307 => -0.6710431575775146
+    // w1 = 0.18198972940444946 => -0.40344923734664917
+    // h1 = 0.5270078182220459  => 0.25029298663139343 
+
+    // console.log((x + w/2) - 1)
+    // console.log((y + h/2) - 3)    
+    // console.log(Math.log(0.18*13/ANCHORS[2 * 2]))
+    // console.log(Math.log(0.52*13/ANCHORS[2 * 2 + 1]))
 
     let offset = 0;
     for (xg = 0; xg<13; xg++) {
       for (yg = 0; yg<13; yg++) {        
         for (p = 0; p<5; p++) {
           //The center of the trained image
-          if (xg===1&&yg===3&&p===2) { 
-            //Transfer to 0~1 corresponding to each grid cell:
-            pixl[offset++] = Math.log(x + w/2) - xg
-            pixl[offset++] = Math.log(y + h/2) - yg
+          if (xg===1&&yg===3&&(p===2)) { 
+            // Transfer to 0~1 corresponding to each grid cell:
+            pixl[offset++] = _alogistic(x + w/2) - xg
+            pixl[offset++] = _alogistic(y + h/2) - yg
             pixl[offset++] = Math.log(w/ANCHORS[p * 2])
-            pixl[offset++] = Math.log(h/ANCHORS[p * 2 + 1])        
+            pixl[offset++] = Math.log(h/ANCHORS[p * 2 + 1])      
+            // pixl[offset++] = (x + w/2) - xg
+            // pixl[offset++] = (y + h/2) - yg
+            // pixl[offset++] = Math.log(w/ANCHORS[p * 2])
+            // pixl[offset++] = Math.log(h/ANCHORS[p * 2 + 1])      
             pixl[offset++] = 1
 
-            if (c===0||c===1) {                                
+            if (c.class===0) {                                
               pixl[offset]=1
-            } else if (c===2||c===3) {           
+            } else if (c.class===1) {           
               pixl[offset+1]=1
             }      
           } else {       
