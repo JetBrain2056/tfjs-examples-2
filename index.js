@@ -8,6 +8,10 @@ let image      = document.getElementById('image');
 
 image.src = imageURL;
 
+// let CLASSES = [];
+// CLASSES.push('Class1');
+// CLASSES.push('Class2');
+
 const CLASSES = [
   'person',
   'bicycle',
@@ -93,19 +97,30 @@ const CLASSES = [
 
 const trainButton = document.getElementById('train');
 trainButton.onclick = async function() {
+  
+  let epochs, optimizer, inputsAsTensor, targetTensor;
+
+  if (tf.getBackend()==='cpu') {
+    tf.setBackend('webgl');
+  }
+
+  let res = await model.predict(await tf.zeros([1, 416, 416, 3]));
+
+  console.log(res.shape); 
+  // console.log(res.dataSync());
 
   // const nb_boxes=1;
-  // const grid_w=7;
-  // const grid_h=7;
-  // const cell_w=64;
-  // const cell_h=64;
+  // const grid_w=13;
+  // const grid_h=13;
+  // const cell_w=32;
+  // const cell_h=32;
   // const img_w=grid_w*cell_w;
   // const img_h=grid_h*cell_h;
   // const kernel_r=tf.regularizers.l2({l2:0.0005});
 
   // const trainModel = tf.sequential();
   
-  // trainModel.add(tf.layers.conv2d({filters:256, kernelSize: [7, 7], strides:[1, 1], inputShape :[img_h, img_w, 3], activation:'relu'}))
+  // trainModel.add(tf.layers.conv2d({filters:256, kernelSize: [3, 3], strides:[1, 1], inputShape :[img_h, img_w, 3], activation:'relu'}))
   // trainModel.add(tf.layers.maxPooling2d({poolSize:[2, 2], strides:[2, 2], padding : 'same'}))
 
   // trainModel.add(tf.layers.conv2d({filters:192, kernelSize: [3, 3], padding : 'same', activation:'relu', kernelRegularizer:kernel_r}))
@@ -138,32 +153,25 @@ trainButton.onclick = async function() {
   // trainModel.add(tf.layers.conv2d({filters:1024, kernelSize: [3, 3], activation:'relu', kernelRegularizer:kernel_r}))
   // trainModel.add(tf.layers.conv2d({filters:1024, kernelSize: [3, 3], activation:'relu', kernelRegularizer:kernel_r}))
 
-  // trainModel.add(tf.layers.inputLayer({inputShape :[img_h, img_w, 3]}))
-  // trainModel.add(tf.layers.conv2d({filters:8,   kernelSize: [3, 3], strides:[2, 2], padding : 'same', activation:'linear'}))
-  // trainModel.add(tf.layers.dense({units:64, inputShape :[img_h, img_w, 3]}))
   // trainModel.add(tf.layers.flatten())
   // trainModel.add(tf.layers.dense({units:1024}))
   // trainModel.add(tf.layers.dropout({rate:0.5}))
   // trainModel.add(tf.layers.dense({units:128, activation:'sigmoid'}))
   // trainModel.add(tf.layers.dense({units:128}))
-  // trainModel.add(tf.layers.reshape({targetShape:[7,7,30]}))
+  // trainModel.add(tf.layers.reshape({targetShape:[13,13,425]}))
 
   // trainModel.summary();
 
-  // const outputModel = tf.sequential();
-  // outputModel.add(tf.layers.flatten({inputShape :[13, 13, 425]}))  
-  // outputModel.add(tf.layers.dense({units:64, activation: 'relu' }))
-  // outputModel.add(tf.layers.dense({units:4}))  
+  // const newOutput = trainModel.apply(model.outputs[0]);
+  // model = tf.model({inputs: model.inputs, outputs: model.outputs[0]}); 
 
-  // const newOutput = outputModel.apply(model.outputs[0]);
-  // model = tf.model({inputs: model.inputs, outputs: newOutput});  
+  // Freeze the layers of the pre-trained model except for the last few
+  for (let i = 0; i < model.layers.length; i++) {
+    model.layers[i].trainable = true;
+  } 
 
-  const optimizer = tf.train.adam();
-  model.compile({
-    optimizer: optimizer,
-    loss: 'binaryCrossentropy',
-    metrics: ['accuracy'],
-  });
+  // const layer = model.getLayer('conv2d_9');
+  // model = await tf.model({inputs: model.inputs, outputs: layer.output}); 
 
   let trainingDataInputs  = [];
   let trainingDataOutputs = [];
@@ -174,80 +182,67 @@ trainButton.onclick = async function() {
     const imageSize = 416;
        
     bufferT  = await tf.browser.fromPixels(_image);      
-    resizedT = await tf.image.resizeNearestNeighbor(bufferT, [imageSize, imageSize]).toFloat();
+    resizedT = await tf.image.resizeNearestNeighbor(bufferT, [imageSize, imageSize]);
     imageT   = await resizedT.div(tf.scalar(255.0)).expandDims();
 
     return imageT;    
   }
   
-  imageFeatures = await calculateImageFeatures(image1);    
-  trainingDataInputs.push(imageFeatures);
-  imageFeatures = await calculateImageFeatures(image2);  
-  trainingDataInputs.push(imageFeatures);
-  imageFeatures = await calculateImageFeatures(image3);  
-  trainingDataInputs.push(imageFeatures);  
-  imageFeatures = await calculateImageFeatures(image4);   
-  trainingDataInputs.push(imageFeatures);    
-  
-  console.log(trainingDataInputs);
+  let img = [];
+  img[0] = {class:0, xmin:0, ymin:0, xmax:62, ymax:209, name:'T1C1.jpg'}
+  img[1] = {class:0, xmin:0, ymin:0, xmax:69, ymax:211, name:'T1C2.jpg'}  
+  img[2] = {class:1, xmin:0, ymin:0, xmax:59, ymax:180, name:'T2C1.jpg'}
+  img[3] = {class:1, xmin:0, ymin:0, xmax:62, ymax:181, name:'T2C2.jpg'}
+  // for (let ic = 4; ic<80; ic++) {
+  //   img[ic] = {class:ic-2, xmin:0, ymin:0, xmax:62, ymax:181, name:'T2C2.jpg'}
+  // }
+
+  for (let i of img) {
+    trainImage = new Image;
+    trainImage.width=416 
+    trainImage.height=416
+    trainImage.src = './images/'+i.name;
+    
+    imageFeatures = await calculateImageFeatures(trainImage); 
+    trainingDataInputs.push(imageFeatures);    
+  }
+ 
+  // console.log(trainingDataInputs);
 
   info.innerText = 'Training model. Please wait...';
   // progress.style.display = 'block';
   
-  const inputsAsTensor  = await tf.concat(trainingDataInputs);  
-	
- // inputsAsTensor = tf.zeros([1,416,416,3]);  
- // targetTensor = tf.zeros([4,13,13,425]);
-
-//
-  let img = [];
-  img[0] = {class:0, xmin:0, ymin:0, xmax:62, ymax:209}
-  img[1] = {class:0, xmin:0, ymin:0, xmax:69, ymax:211}  
-  img[2] = {class:1, xmin:0, ymin:0, xmax:59, ymax:180}
-  img[3] = {class:1, xmin:0, ymin:0, xmax:62, ymax:181}
+  inputsAsTensor  = await tf.concat(trainingDataInputs);
   
-  for (let c of img) {
-    pixl = [];    
-    for (let xx=0; xx<169; xx++) {    
-      for (let i=0; i<5; i++) {
-     
-        _x = 0
-        _y = 0
-        _w = 0
-        _h = 0
-        o = 0
-        pixl.push(_x)
-        pixl.push(_y)
-        pixl.push(_w)
-        pixl.push(_h)
-        pixl.push(o)
-        
-        for (let ii=0; ii<80; ii++) {                               
-            pixl.push(0)
-        }
-      }      
-    }   
-    
-    const ANCHORS = [0.573, 0.677, 1.87, 2.06, 3.34, 5.47, 7.88, 3.53, 9.77, 9.17]; 
-    function _alogistic(e) {      
+  const ANCHORS = [0.573, 0.677, 1.87, 2.06, 3.34, 5.47, 7.88, 3.53, 9.77, 9.17]; 
+  function _alogistic(e) {      
       // if (e===0||e<0) {
       //   return Math.log(e - 1/e)
       // } else {
       //   return Math.log(1 - 1/e)
       // }
       return Math.log(e)
-    }
+  }
 
-    //Normalize in 0~1 and transfer to feature map size:
-    const x = c.xmin/416*13;
-    const y = c.ymin/416*13;
-    const w = (c.xmax - c.xmin)/416*13;
-    const h = (c.ymax - c.ymin)/416*13;
 
-    // console.log(x)
-    // console.log(y)
-    // console.log(w)
-    // console.log(h)
+  // inputsAsTensor = tf.zeros([1,416,416,3]);  
+  zerosTensor = tf.zeros([1,13,13,425]);  
+
+  for (let c of img) {
+     
+    pixl = zerosTensor.dataSync();
+    // console.log(pixl) 
+
+    //Normalize in 0~1:
+    const x1 = c.xmin/416;
+    const y1 = c.ymin/416;
+    const x2 = c.xmax/416;
+    const y2 = c.ymax/416;
+
+    console.log(x1)
+    console.log(y1)
+    console.log(x2)
+    console.log(y2)
 
     //Normalize coordinates to scores example
     // x1 = 0.010362043045461178  => -1.097084879875183 
@@ -255,26 +250,22 @@ trainButton.onclick = async function() {
     // w1 = 0.18198972940444946 => -0.40344923734664917
     // h1 = 0.5270078182220459  => 0.25029298663139343 
 
-    // console.log((x + w/2) - 1)
-    // console.log((y + h/2) - 3)    
-    // console.log(Math.log(0.18*13/ANCHORS[2 * 2]))
-    // console.log(Math.log(0.52*13/ANCHORS[2 * 2 + 1]))
+    bx = x1 + (x2-x1)/2
+    by = y1 + (y2-y1)/2
+    bw = x2 - x1
+    bh = y2 - y1
 
     let offset = 0;
     for (xg = 0; xg<13; xg++) {
       for (yg = 0; yg<13; yg++) {        
         for (p = 0; p<5; p++) {
           //The center of the trained image
-          if (xg===1&&yg===3&&(p===2)) { 
+          if (xg===1&&yg===3&&p===2) { 
             // Transfer to 0~1 corresponding to each grid cell:
-            pixl[offset++] = _alogistic(x + w/2) - xg
-            pixl[offset++] = _alogistic(y + h/2) - yg
-            pixl[offset++] = Math.log(w/ANCHORS[p * 2])
-            pixl[offset++] = Math.log(h/ANCHORS[p * 2 + 1])      
-            // pixl[offset++] = (x + w/2) - xg
-            // pixl[offset++] = (y + h/2) - yg
-            // pixl[offset++] = Math.log(w/ANCHORS[p * 2])
-            // pixl[offset++] = Math.log(h/ANCHORS[p * 2 + 1])      
+            pixl[offset++] = _alogistic(bx*13) - xg
+            pixl[offset++] = _alogistic(by*13) - yg
+            pixl[offset++] = Math.log(bw*13/ANCHORS[p * 2])
+            pixl[offset++] = Math.log(bh*13/ANCHORS[p * 2 + 1])              
             pixl[offset++] = 1
 
             if (c.class===0) {                                
@@ -289,20 +280,34 @@ trainButton.onclick = async function() {
         }
       }
     }
-    
-    trainingDataOutputs.push(await tf.tensor(pixl, [1,13,13,425], 'float32'));
+
+    tfpixl = await tf.tensor(pixl, [1,13,13,425], 'float32');
+    // console.log(await tfpixl.array())
+
+    trainingDataOutputs.push(tfpixl);
   }
     
   targetTensor    = await tf.concat(trainingDataOutputs);  
-  console.log(targetTensor.dataSync())
-	
-  console.log(inputsAsTensor);
-  console.log(targetTensor);
+  // console.log(targetTensor.dataSync())
+
+  // model.summary();
+
+  optimizer = tf.train.adam();
+  await model.compile({
+    optimizer: optimizer,
+    loss: 'binaryCrossentropy',
+    // loss: 'categoricalCrossentropy',
+    metrics: ['accuracy'],
+  });
+
+  // console.log(inputsAsTensor);
+  // console.log(targetTensor);
   
-  const epochs = 5;  
+  epochs = 10;  
   await model.fit(inputsAsTensor, targetTensor, {    
-    shuffle   : true, 
+    // shuffle   : true, 
     batchSize : 64,     
+    // validationSplitRetrain : 0.15,
     epochs    : epochs, 
     callbacks : { onEpochEnd: async (epoch,logs) => {
       progress.value = epoch/(epochs-1)*100;
@@ -310,14 +315,9 @@ trainButton.onclick = async function() {
     }}
   });
 
-  // Freeze the layers of the pre-trained model except for the last few
-  for (let i = 0; i < model.layers.length; i++) {
-    model.layers[i].trainable = true;
-  }
 
   inputsAsTensor.dispose();
   targetTensor.dispose();  
-
   // model.dispose();
 
   info.innerText = 'Model succesfully trained!';
@@ -334,15 +334,6 @@ saveButton.onclick = async function saveModel() {
     console.log(err);
   }
   
-}
-
-function _logistic(x) {
-	if (x > 0) {
-	    return (1 / (1 + Math.exp(-x)));
-	} else {
-	    const e = Math.exp(x);
-	    return e / (1 + e);
-	}
 }
 async function ssd_mobilenet(bufferT) {
 
@@ -401,7 +392,7 @@ async function ssd_mobilenet(bufferT) {
 
   const indexTensor = await tf.image.nonMaxSuppressionAsync(boxes2, maxScores, maxNumBoxes, minScore, minScore);  
 
-  const indexes = indexTensor.dataSync();
+  const indexes = await indexTensor.array();
   indexTensor.dispose();  
 
   tf.setBackend(prevBackend)
@@ -410,37 +401,40 @@ async function ssd_mobilenet(bufferT) {
   console.log(count);  
        
   let objects = [];
-  for (let i = 0; i < count; i++) {
+  for (let i of indexes) {   
 
-      const bbox = []
-      for (let j = 0; j < 4; j++) {
-        bbox[j] = boxes[indexes[i] * 4 + j]
-      }
-
-      const minY = bbox[0] * height; 
-      const minX = bbox[1] * width;  
-      const maxY = bbox[2] * height; 
-      const maxX = bbox[3] * width;   
+      const minY = boxes[i * 4] * height; 
+      const minX = boxes[i * 4 + 1] * width;  
+      const maxY = boxes[i * 4 + 2] * height; 
+      const maxX = boxes[i * 4 + 3] * width;   
       
       objects.push({
         left  : minX,
         top   : minY,
         right : maxX,
         bottom: maxY,
-        className: CLASSES[classes[indexes[i]]],
-        classProb: boxes[indexes[i]]  
+        className: CLASSES[classes[i]],
+        classProb: boxes[i]  
       })
   }
   drawImage(objects);
 }
-
 async function oldPredict(inputs) {
+
+  function _logistic(x) {
+    if (x > 0) {
+        return (1 / (1 + Math.exp(-x)));
+    } else {
+        const e = Math.exp(x);
+        return e / (1 + e);
+    }
+  }
 
   const outputs = await model.predict(inputs);
 
-  console.log(outputs); 
+  // console.log(outputs); 
   let predictions = await outputs.array();
-  console.log(predictions);  
+  // console.log(predictions);  
 
   const ANCHORS = [0.573, 0.677, 1.87, 2.06, 3.34, 5.47, 7.88, 3.53, 9.77, 9.17]; 
 
@@ -448,7 +442,7 @@ async function oldPredict(inputs) {
       tf.setBackend('cpu');
   }
   prevBackend = tf.getBackend();
-  console.log(prevBackend);  
+  // console.log(prevBackend);  
 
   if (predictions.length != 3) {
 		console.log( "Post processing..." );
@@ -458,7 +452,9 @@ async function oldPredict(inputs) {
 		const height     = predictions[0].length;
 		const width      = predictions[0][0].length;    
 		const num_class  = channels / num_anchor - 5;
-    const maxNumBoxes = 15;
+    const maxNumBoxes = 20;
+    const minIoU      = 0.15;
+    const minScore    = 0.05;
 
     console.log(num_anchor);
     console.log(channels);
@@ -473,21 +469,37 @@ async function oldPredict(inputs) {
 				let offset = 0;
         const pixl = predictions[0][grid_y][grid_x];
 
-				for (var i = 0; i < num_anchor; i++) {          
-          
-					let x = (_logistic(pixl[offset++]) + grid_x) / width;
-					let y = (_logistic(pixl[offset++]) + grid_y) / height;
-					let w = Math.exp(pixl[offset++]) * ANCHORS[i * 2] / width;
-					let h = Math.exp(pixl[offset++]) * ANCHORS[i * 2 + 1] / height;
+        // console.log('pixel:',pixl)    
 
-					let objectness          = tf.scalar(_logistic(pixl[offset++]));
+				for (var i = 0; i < num_anchor; i++) {    
+
+          // console.log('offset:',offset)      
+          
+					let bx = (_logistic(pixl[offset++]) + grid_x) / width;
+					let by = (_logistic(pixl[offset++]) + grid_y) / height;        
+					let bw = Math.exp(pixl[offset++]) * ANCHORS[i * 2] / width;
+					let bh = Math.exp(pixl[offset++]) * ANCHORS[i * 2 + 1] / height;   
+          let objectness = tf.scalar(_logistic(pixl[offset++])); 
+					        
 					let class_probabilities = tf.tensor1d(pixl.slice(offset, offset + num_class)).softmax();
-					offset += num_class;
+          
+          // console.log(await class_probabilities.array())
+          
+					offset += num_class;          
 
 					class_probabilities = class_probabilities.mul(objectness);
+          // console.log(class_probabilities)
 					let max_index       = class_probabilities.argMax();
 
-					boxes.push([x - w / 2, y - h / 2, x + w / 2, y + h / 2]);
+          // console.log(max_index.dataSync())
+          // console.log(max_index.dataSync()[0])
+      
+          x = bx - bw / 2
+          y = by - bh / 2
+          w = bw
+          h = bh
+
+					boxes.push([x, y, w, h]);
 					scores.push(class_probabilities.max().dataSync()[0]);
 					classes.push(max_index.dataSync()[0]);
 				}
@@ -498,8 +510,9 @@ async function oldPredict(inputs) {
 		scores  = tf.tensor1d(scores);
 		classes = tf.tensor1d(classes);
 
-		const selected_indices = await tf.image.nonMaxSuppressionAsync(boxes, scores, maxNumBoxes);
-    console.log(selected_indices)
+		const selected_indices = await tf.image.nonMaxSuppressionAsync(boxes, scores, maxNumBoxes, minIoU, minScore);
+    // console.log(await selected_indices.array())
+    
 		predictions = [await boxes.gather(selected_indices).array(), 
                    await scores.gather(selected_indices).array(), 
                    await classes.gather(selected_indices).array()];
@@ -510,6 +523,10 @@ async function oldPredict(inputs) {
   const scores  = predictions[1];
   const classes = predictions[2];  
 
+  console.log(boxes)
+  console.log(scores)
+  console.log(classes)
+
   const width    = image.width;
   const height   = image.height;
 
@@ -518,16 +535,16 @@ async function oldPredict(inputs) {
 
     const indexes = boxes.indexOf(bbox);
     
-    const minX = bbox[0] * width; 
-    const minY = bbox[1] * height;  
-    const maxX = bbox[2] * width; 
-    const maxY = bbox[3] * height;   
+    const x1 = bbox[0] * width; 
+    const y1 = bbox[1] * height;  
+    const w1 = bbox[2] * width; 
+    const h1 = bbox[3] * height;   
     
     objects.push({
-        left  : minX,
-        top   : minY,
-        right : maxX,
-        bottom: maxY,
+        left  : x1,
+        top   : y1,
+        right : x1 + w1,
+        bottom: y1 + h1,
         className: CLASSES[classes[indexes]],
         classProb: scores[indexes]
     });
@@ -573,11 +590,14 @@ runButton.onclick = async function runPredict() {
   resizedT = await tf.image.resizeNearestNeighbor(bufferT, [416, 416]);  
   imageT   = await resizedT.div(tf.scalar(255.0)).expandDims();  
 
+  // imageT = tf.zeros([1,416,416,3])
+
   // console.log(imageT);     
 
   //*** Graph Models ***
   // await ssd_mobilenet(bufferT); 
-  //*** Layers Models ***  
+  //*** Layers Models ***
+  // await yolo_tiny(imageT);
   await oldPredict(imageT);  
 }
 
@@ -615,15 +635,10 @@ async function init() {
 
   model = await tf.loadLayersModel(URL);  
 
-  model.summary();
+  // model.summary();
 
   // console.log(model.inputs); 
   // console.log(model.outputs); 
-
-  // let res = await model.predict(await tf.zeros([1, 416, 416, 3]));
-
-  // console.log(res); 
-  // console.log(res.dataSync());
 
   info.innerText = 'Model loaded successfully!';
                 
