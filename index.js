@@ -8,11 +8,7 @@ let image      = document.getElementById('image');
 
 image.src = imageURL;
 
-// let CLASSES = [];
-// CLASSES.push('Class1');
-// CLASSES.push('Class2');
-
-const CLASSES = [
+let CLASSES = [
   'person',
   'bicycle',
   'car',
@@ -97,6 +93,11 @@ const CLASSES = [
 
 const trainButton = document.getElementById('train');
 trainButton.onclick = async function() {
+
+  CLASSES = [];
+  CLASSES.push('Class1');
+  CLASSES.push('Class2');
+  CLASSES.push('Class3');
   
   let epochs, optimizer, inputsAsTensor, targetTensor;
 
@@ -189,10 +190,13 @@ trainButton.onclick = async function() {
   }
   
   let img = [];
-  img[0] = {class:0, xmin:0, ymin:0, xmax:62, ymax:209, name:'T1C1.jpg'}
-  img[1] = {class:0, xmin:0, ymin:0, xmax:69, ymax:211, name:'T1C2.jpg'}  
-  img[2] = {class:1, xmin:0, ymin:0, xmax:59, ymax:180, name:'T2C1.jpg'}
-  img[3] = {class:1, xmin:0, ymin:0, xmax:62, ymax:181, name:'T2C2.jpg'}
+  img[0] = {class:0, xmin:75, ymin:70, xmax:110, ymax:83, name:'train416.jpg'}
+  img[1] = {class:0, xmin:115, ymin:60, xmax:149, ymax:166, name:'train416.jpg'}  
+  img[2] = {class:0, xmin:150, ymin:69, xmax:184, ymax:184, name:'train416.jpg'}
+  img[3] = {class:1, xmin:187, ymin:88, xmax:219, ymax:187, name:'train416.jpg'}
+  img[4] = {class:1, xmin:221, ymin:90, xmax:256, ymax:187, name:'train416.jpg'}
+  img[5] = {class:2, xmin:257, ymin:81, xmax:289, ymax:170, name:'train416.jpg'}
+  img[6] = {class:2, xmin:295, ymin:82, xmax:330, ymax:180, name:'train416.jpg'}
   // for (let ic = 4; ic<80; ic++) {
   //   img[ic] = {class:ic-2, xmin:0, ymin:0, xmax:62, ymax:181, name:'T2C2.jpg'}
   // }
@@ -267,12 +271,7 @@ trainButton.onclick = async function() {
             pixl[offset++] = Math.log(bw*13/ANCHORS[p * 2])
             pixl[offset++] = Math.log(bh*13/ANCHORS[p * 2 + 1])              
             pixl[offset++] = 1
-
-            if (c.class===0) {                                
-              pixl[offset]=1
-            } else if (c.class===1) {           
-              pixl[offset+1]=1
-            }      
+            pixl[offset+c.class] = 1    
           } else {       
             offset += 5;
           }
