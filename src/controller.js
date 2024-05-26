@@ -1,7 +1,8 @@
 const tf = require("@tensorflow/tfjs");
 require('@tensorflow/tfjs-node');
 require('@tensorflow/tfjs-node-gpu');
-const URL   = 'http://localhost:9000/app/model/model.json';
+// const URL   = 'http://localhost:9000/app/model/model.json';
+const URL = 'https://raw.githubusercontent.com/MikeShi42/yolo-tiny-tfjs/master/model2.json';
 
 let model;
 
