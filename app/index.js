@@ -120,6 +120,12 @@ async function getOnServer(link) {
 const trainButton = document.getElementById('train');
 trainButton.onclick = async function() {
 
+  res = await getOnServer('/tftrain');
+  console.log(res);
+
+  //test tfgpu on server
+  return;
+
   CLASSES = [];
   CLASSES.push('Class1');
   CLASSES.push('Class2');
@@ -130,9 +136,9 @@ trainButton.onclick = async function() {
   
   let epochs, optimizer, inputsAsTensor, targetTensor;
 
-  // if (tf.getBackend()==='cpu') {
-  //   tf.setBackend('webgl');
-  // }
+  if (tf.getBackend()==='cpu') {
+    tf.setBackend('webgl');
+  }
 
   // let res = await model.predict(await tf.zeros([1, 416, 416, 3]));
 
@@ -323,37 +329,35 @@ trainButton.onclick = async function() {
   targetTensor    = await tf.concat(trainingDataOutputs);  
   // console.log(targetTensor.dataSync())
 
-  // model.summary();
+  model.summary();
 
-  // optimizer = tf.train.adam();
-  // await model.compile({
-  //   optimizer: optimizer,
-  //   loss: 'binaryCrossentropy',
-  //   // loss: 'categoricalCrossentropy',
-  //   metrics: ['accuracy'],
-  // });
+  optimizer = tf.train.adam();
+  await model.compile({
+    optimizer: optimizer,
+    loss: 'binaryCrossentropy',
+    // loss: 'categoricalCrossentropy',
+    metrics: ['accuracy'],
+  });
 
-  // console.log(inputsAsTensor);
-  // console.log(targetTensor);
+  console.log(inputsAsTensor);
+  console.log(targetTensor);
   
-  res = await getOnServer('/tftrain');
-  console.log(res)
   
-  // epochs = 5;  
-  // await model.fit(inputsAsTensor, targetTensor, {    
-  //   shuffle   : true, 
-  //   batchSize : 32,     
-  //   // validationSplitRetrain : 0.99,
-  //   epochs    : epochs, 
-  //   callbacks : { onEpochEnd: async (epoch,logs) => {
-  //     progress.value = epoch/(epochs-1)*100;
-  //     console.log('Epoch', epoch, logs)
-  //   }}
-  // });
+  epochs = 5;  
+  await model.fit(inputsAsTensor, targetTensor, {    
+    shuffle   : true, 
+    batchSize : 32,     
+    // validationSplitRetrain : 0.99,
+    epochs    : epochs, 
+    callbacks : { onEpochEnd: async (epoch,logs) => {
+      progress.value = epoch/(epochs-1)*100;
+      console.log('Epoch', epoch, logs)
+    }}
+  });
 
-  // inputsAsTensor.dispose();
-  // targetTensor.dispose();  
-  // model.dispose();
+  inputsAsTensor.dispose();
+  targetTensor.dispose();  
+  model.dispose();
 
   info.innerText = 'Model succesfully trained!';
   progress.style.display = 'none';
