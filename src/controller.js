@@ -95,9 +95,9 @@ exports.tfTrain = async function(req,res) {
     
     let epochs, optimizer, inputsAsTensor, targetTensor;
 
-    if (tf.getBackend()==='cpu') {
-        tf.setBackend('gpu');
-    }
+    // if (tf.getBackend()==='cpu') {
+    //     tf.setBackend('gpu');
+    // }
 
     // Freeze the layers of the pre-trained model except for the last few
     for (let i = 0; i < model.layers.length; i++) {
@@ -127,23 +127,18 @@ exports.tfTrain = async function(req,res) {
     img[4] = {class:1, xmin:221, ymin:90, xmax:256, ymax:187, name:'train416.jpg'}
     img[5] = {class:2, xmin:257, ymin:81, xmax:289, ymax:170, name:'train416.jpg'}
     img[6] = {class:2, xmin:295, ymin:82, xmax:330, ymax:180, name:'train416.jpg'}
-    // for (i=7;i<20;i++) {
-    //     img.push({class:i-4, xmin:0, ymin:0, xmax:416, ymax:416, name:'train416.jpg'});
-    // }
+    for (i=7;i<80;i++) {
+        img.push({class:i-4, xmin:0, ymin:0, xmax:416, ymax:416, name:'train416.jpg'});
+    }
 
     for (let i of img) {
         const trainImage = fs.readFileSync('./app/images/'+i.name); 
-        // trainImage = new Image();
-        // trainImage.width=416 
-        // trainImage.height=416
-        // trainImage = './images/'+i.name;
-        console.log(trainImage)
-        
+
         imageFeatures = await calculateImageFeatures(trainImage); 
         trainingDataInputs.push(imageFeatures);    
     }
     
-    console.log(trainingDataInputs);
+    // console.log(trainingDataInputs);
     
     inputsAsTensor  = await tf.concat(trainingDataInputs);
     
@@ -153,7 +148,6 @@ exports.tfTrain = async function(req,res) {
         // return Math.log(1/e-1)
         return Math.log(e)
     }
-
 
     // inputsAsTensor = tf.zeros([1,416,416,3]);  
     zerosTensor = tf.zeros([1,13,13,425]);  
@@ -214,7 +208,7 @@ exports.tfTrain = async function(req,res) {
         }
         }
 
-        tfpixl = await tf.tensor(pixl, [1,13,13,425], 'float32');
+        tfpixl = tf.tensor(pixl, [1,13,13,425], 'float32');
         // console.log(await tfpixl.array())
 
         trainingDataOutputs.push(tfpixl);
@@ -233,8 +227,8 @@ exports.tfTrain = async function(req,res) {
         metrics: ['accuracy'],
     });
 
-    console.log(inputsAsTensor);
-    console.log(targetTensor); 
+    // console.log(inputsAsTensor);
+    // console.log(targetTensor); 
     
     epochs = 5;  
     await model.fit(inputsAsTensor, targetTensor, {    
@@ -242,17 +236,24 @@ exports.tfTrain = async function(req,res) {
         batchSize : 32,     
         // validationSplitRetrain : 0.99,
         epochs    : epochs, 
-        callbacks : { onEpochEnd: async (epoch,logs) => {
+        // callbacks : { onEpochEnd: async (epoch,logs) => {
         // progress.value = epoch/(epochs-1)*100;
-        console.log('Epoch', epoch, logs)
-        }}
+        // console.log('Epoch', epoch, logs)
+        // }}
     });
 
     inputsAsTensor.dispose();
     targetTensor.dispose();  
 
+    // await model.save('./app/model/newmodel');   
+    
+    const predictImage = fs.readFileSync('./app/images/train.jpg'); 
+    imageFeatures = await calculateImageFeatures(predictImage); 
+    outputs = model.predict(imageFeatures);
+    predictions = await outputs.array();
+
     try {        
-        await res.send({data:'success'});         
+        await res.send({status:'success', data: predictions});         
     } catch(err) {
         console.log(err);
     }
