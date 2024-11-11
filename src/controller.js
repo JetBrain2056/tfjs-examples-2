@@ -86,7 +86,7 @@ exports.tfTrain = async function(req,res) {
     model = await tf.loadLayersModel(URL);  
     model.summary();
      
-    model.predict(tf.zeros([1, 416, 416, 3]));
+    //model.predict(tf.zeros([1, 416, 416, 3]));
     
     CLASSES = [];
     CLASSES.push('Class1');
@@ -101,8 +101,10 @@ exports.tfTrain = async function(req,res) {
 
     // Freeze the layers of the pre-trained model except for the last few
     for (let i = 0; i < model.layers.length; i++) {
-        model.layers[i].trainable = true;
+        model.layers[i].trainable = false;
     } 
+
+    model.layers[model.layers.length - 1].trainable = true; // Разморозка последнего слоя для дообучения
 
     let trainingDataInputs  = [];
     let trainingDataOutputs = [];
@@ -167,12 +169,6 @@ exports.tfTrain = async function(req,res) {
         // console.log(y1)
         // console.log(x2)
         // console.log(y2)
-
-        //Normalize coordinates to scores example
-        // x1 = 0.010362043045461178  => -1.097084879875183 
-        // y1 = -0.013428867794573307 => -0.6710431575775146
-        // w1 = 0.18198972940444946 => -0.40344923734664917
-        // h1 = 0.5270078182220459  => 0.25029298663139343 
 
         bx = x1 + (x2-x1)/2
         by = y1 + (y2-y1)/2
