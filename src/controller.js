@@ -13,65 +13,43 @@ function dateNow() {
     return date.toISOString().slice(0, 19).replace('T', ' ');
 }
 function trainModel() {
+        //chatGPT version////    
 
-    // const nb_boxes=1;
-    // const grid_w=13;
-    // const grid_h=13;
-    // const cell_w=32;
-    // const cell_h=32;
-    // const img_w=grid_w*cell_w;
-    // const img_h=grid_h*cell_h;
-    // const kernel_r=tf.regularizers.l2({l2:0.0005});
+    function yoloLayers() {
+        //const anchors = [1.08, 1.19, 3.42, 4.41, 6.63, 11.38, 9.42, 5.11, 16.62, 10.52];
+        //const numAnchors = anchors.length / 2;
 
-    // const trainModel = tf.sequential();
-    
-    // trainModel.add(tf.layers.conv2d({filters:256, kernelSize: [3, 3], strides:[1, 1], inputShape :[img_h, img_w, 3], activation:'relu'}))
-    // trainModel.add(tf.layers.maxPooling2d({poolSize:[2, 2], strides:[2, 2], padding : 'same'}))
+        const model = tf.sequential();
 
-    // trainModel.add(tf.layers.conv2d({filters:192, kernelSize: [3, 3], padding : 'same', activation:'relu', kernelRegularizer:kernel_r}))
-    // trainModel.add(tf.layers.maxPooling2d({poolSize:[2, 2], strides:[2, 2], padding : 'same'}))
-    // trainModel.add(tf.layers.conv2d({filters:128, kernelSize: [1, 1], padding : 'same', activation:'relu', kernelRegularizer:kernel_r}))
-    // trainModel.add(tf.layers.conv2d({filters:256, kernelSize: [3, 3], padding : 'same', activation:'relu', kernelRegularizer:kernel_r}))
-    // trainModel.add(tf.layers.conv2d({filters:256, kernelSize: [1, 1], padding : 'same', activation:'relu', kernelRegularizer:kernel_r}))
-    // trainModel.add(tf.layers.conv2d({filters:512, kernelSize: [3, 3], padding : 'same', activation:'relu', kernelRegularizer:kernel_r}))
-    // trainModel.add(tf.layers.maxPooling2d({poolSize:[2, 2], strides:[2, 2], padding : 'same'}))
+        model.add(tf.layers.conv2d({ filters: 16, kernelSize: 3, strides: 1, inputShape: [416, 416, 3], padding: 'same', activation: 'LeakyReLU' }));
+        model.add(tf.layers.maxPooling2d({ poolSize: [2, 2], strides: [2, 2], padding: 'same' }));
+        model.add(tf.layers.conv2d({ filters: 32, kernelSize: 3, strides: 1, padding: 'same', activation: 'LeakyReLU' }));
+        model.add(tf.layers.maxPooling2d({ poolSize: [2, 2], strides: [2, 2], padding: 'same' }));
+        model.add(tf.layers.conv2d({ filters: 64, kernelSize: 3, strides: 1, padding: 'same', activation: 'LeakyReLU' }));
+        model.add(tf.layers.maxPooling2d({ poolSize: [2, 2], strides: [2, 2], padding: 'same' }));
+        model.add(tf.layers.conv2d({ filters: 128, kernelSize: 3, strides: 1, padding: 'same', activation: 'LeakyReLU' }));
+        model.add(tf.layers.maxPooling2d({ poolSize: [2, 2], strides: [2, 2], padding: 'same' }));
+        model.add(tf.layers.conv2d({ filters: 256, kernelSize: 3, strides: 1, padding: 'same', activation: 'LeakyReLU' }));
+        model.add(tf.layers.maxPooling2d({ poolSize: [2, 2], strides: [2, 2], padding: 'same' }));
+        model.add(tf.layers.conv2d({ filters: 512, kernelSize: 3, strides: 1, padding: 'same', activation: 'LeakyReLU' }));
+        model.add(tf.layers.maxPooling2d({ poolSize: [2, 2], strides: [1, 1], padding: 'same' }));
+        model.add(tf.layers.conv2d({ filters: 1024, kernelSize: 3, strides: 1, padding: 'same', activation: 'LeakyReLU' }));
+        model.add(tf.layers.conv2d({ filters: 1024, kernelSize: 3, strides: 1, padding: 'same', activation: 'LeakyReLU' }));
+        model.add(tf.layers.conv2d({ filters: 425, kernelSize: 1, strides: 1, padding: 'same' }));
 
-    // trainModel.add(tf.layers.conv2d({filters:256, kernelSize: [1, 1], padding : 'same', activation:'relu', kernelRegularizer:kernel_r}))
-    // trainModel.add(tf.layers.conv2d({filters:512, kernelSize: [3, 3], padding : 'same', activation:'relu', kernelRegularizer:kernel_r}))
-    // trainModel.add(tf.layers.conv2d({filters:256, kernelSize: [1, 1], padding : 'same', activation:'relu', kernelRegularizer:kernel_r}))
-    // trainModel.add(tf.layers.conv2d({filters:512, kernelSize: [3, 3], padding : 'same', activation:'relu', kernelRegularizer:kernel_r}))
-    // trainModel.add(tf.layers.conv2d({filters:256, kernelSize: [1, 1], padding : 'same', activation:'relu', kernelRegularizer:kernel_r}))
-    // trainModel.add(tf.layers.conv2d({filters:512, kernelSize: [3, 3], padding : 'same', activation:'relu', kernelRegularizer:kernel_r}))
-    // trainModel.add(tf.layers.conv2d({filters:256, kernelSize: [1, 1], padding : 'same', activation:'relu', kernelRegularizer:kernel_r}))
-    // trainModel.add(tf.layers.conv2d({filters:512, kernelSize: [3, 3], padding : 'same', activation:'relu', kernelRegularizer:kernel_r}))
-    // trainModel.add(tf.layers.conv2d({filters:512, kernelSize: [1, 1], padding : 'same', activation:'relu', kernelRegularizer:kernel_r}))
-    // trainModel.add(tf.layers.conv2d({filters:1024, kernelSize: [3, 3], padding : 'same', activation:'relu', kernelRegularizer:kernel_r}))
-    // trainModel.add(tf.layers.maxPooling2d({poolSize:[2, 2], strides:[2, 2], padding : 'same'}))
+        return model;
+    }
 
-    // trainModel.add(tf.layers.conv2d({filters:512, kernelSize: [1, 1], padding : 'same', activation:'relu', kernelRegularizer:kernel_r}))
-    // trainModel.add(tf.layers.conv2d({filters:1024, kernelSize: [3, 3], padding : 'same', activation:'relu', kernelRegularizer:kernel_r}))
-    // trainModel.add(tf.layers.conv2d({filters:512, kernelSize: [1, 1], padding : 'same', activation:'relu', kernelRegularizer:kernel_r}))
-    // trainModel.add(tf.layers.conv2d({filters:1024, kernelSize: [3, 3], padding : 'same', activation:'relu', kernelRegularizer:kernel_r}))
-    // trainModel.add(tf.layers.conv2d({filters:1024, kernelSize: [3, 3], padding : 'same', activation:'relu', kernelRegularizer:kernel_r}))
-    // trainModel.add(tf.layers.conv2d({filters:1024, kernelSize: [3, 3], strides:[2, 2], padding : 'same'}))
+    // Создание экземпляра модели
+    model = yoloLayers();
 
-    // trainModel.add(tf.layers.conv2d({filters:1024, kernelSize: [3, 3], activation:'relu', kernelRegularizer:kernel_r}))
-    // trainModel.add(tf.layers.conv2d({filters:1024, kernelSize: [3, 3], activation:'relu', kernelRegularizer:kernel_r}))
+    // Компиляция модели
+    model.compile({ loss: 'binaryCrossentropy', optimizer: 'adam' , metrics: ['accuracy'],});
 
-    // trainModel.add(tf.layers.flatten())
-    // trainModel.add(tf.layers.dense({units:1024}))
-    // trainModel.add(tf.layers.dropout({rate:0.5}))
-    // trainModel.add(tf.layers.dense({units:128, activation:'sigmoid'}))
-    // trainModel.add(tf.layers.dense({units:128}))
-    // trainModel.add(tf.layers.reshape({targetShape:[13,13,425]}))
+    // Вывод структуры модели
+    model.summary();
 
-    // trainModel.summary();
-
-    // const newOutput = trainModel.apply(model.outputs[0]);
-    // model = tf.model({inputs: model.inputs, outputs: model.outputs[0]}); 
-
-    // const layer = model.getLayer('conv2d_9');
-    // model = await tf.model({inputs: model.inputs, outputs: layer.output}); 
+    return model;
 }
 exports.app = async function(req, res) {
     if (!req.body) return res.sendStatus(400);
