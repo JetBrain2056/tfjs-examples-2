@@ -89,6 +89,7 @@ exports.tfTrain = async function(req,res) {
         return imageT;    
     }
     
+    //demo for 3 classes
     let img = [];
     img[0] = {class:0, xmin:75, ymin:70, xmax:110, ymax:83, name:'train416.jpg'}
     img[1] = {class:0, xmin:115, ymin:60, xmax:149, ymax:166, name:'train416.jpg'}  
@@ -113,12 +114,12 @@ exports.tfTrain = async function(req,res) {
     inputsAsTensor  = await tf.concat(trainingDataInputs);
     
     //v2 yolo_tiny
+    const numClasses = 3;
     const ANCHORS = [0.573, 0.677, 1.87, 2.06, 3.34, 5.47, 7.88, 3.53, 9.77, 9.17];   
     //const ANCHORS = [1.08, 1.19, 3.42, 4.41, 6.63, 11.38, 9.42, 5.11, 16.62, 10.52];
 
     //inputsAsTensor = tf.zeros([1,416,416,3]);  
-    //zerosTensor = tf.zeros([1,13,13,425]);  
-    zerosTensor = tf.zeros([1,13,13,75]);  
+    zerosTensor = tf.zeros([1,13,13,5*(numClasses+5)]);      
 
     for (let c of img) {
         
@@ -158,13 +159,12 @@ exports.tfTrain = async function(req,res) {
                 } else {       
                     offset += 5;
                 }
-                offset += 3;
+                offset += numClasses;
                 }
             }
         }
-
-        //tfpixl = tf.tensor(pixl, [1,13,13,425], 'float32');
-        tfpixl = tf.tensor(pixl, [1,13,13,75], 'float32');
+      
+        tfpixl = tf.tensor(pixl, [1,13,13,5*(numClasses+5)], 'float32');        
 
         trainingDataOutputs.push(tfpixl);
     }
@@ -179,10 +179,13 @@ exports.tfTrain = async function(req,res) {
     model.layers[model.layers.length - 1].trainable = true; 
         
     console.log(model.layers[model.layers.length - 1]);    
-
-    const L1L2 = { l1: 0, l2: 0.0005000000237487257, hasL1: false, hasL2: true }
-    const layer = tf.layers.conv2d({ filters: 75, rank:2, kernelSize: [1,1], strides: [1,1], padding: 'same'});
+    
+    const layer = tf.layers.conv2d({ filters: 5*(numClasses+5), rank:2, kernelSize: [1,1], strides: [1,1], padding: 'same',
+        kernelRegularizer: tf.regularizers.l1l2({ l1: 0, l2: 0.0005000000237487257, hasL1: false, hasL2: true })
+    });
     const newModel = tf.model({inputs: model.inputs, outputs: layer.apply(model.output)});
+
+    console.log(newModel.layers[newModel.layers.length - 1]); 
 
     newModel.compile({
         optimizer:  'adam',
@@ -193,8 +196,8 @@ exports.tfTrain = async function(req,res) {
       
     await newModel.fit(inputsAsTensor, targetTensor, {
         epochs: 10,
-        shuffle: true,
-        validationSplit: 0.2,
+        //shuffle: true,
+        //validationSplit: 0.2,
         batchSize : 32, 
     });
 
