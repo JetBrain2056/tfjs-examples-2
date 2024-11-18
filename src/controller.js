@@ -91,7 +91,7 @@ exports.tfTrain = async function(req,res) {
     
     //demo for 3 classes
     let img = [];
-    img[0] = {class:0, xmin:75, ymin:70, xmax:110, ymax:83, name:'train416.jpg'}
+    img[0] = {class:0, xmin:75, ymin:70, xmax:110, ymax:183, name:'train416.jpg'}
     img[1] = {class:0, xmin:115, ymin:60, xmax:149, ymax:166, name:'train416.jpg'}  
     img[2] = {class:0, xmin:150, ymin:69, xmax:184, ymax:184, name:'train416.jpg'}
     img[3] = {class:1, xmin:187, ymin:88, xmax:219, ymax:187, name:'train416.jpg'}
@@ -180,13 +180,28 @@ exports.tfTrain = async function(req,res) {
         
     console.log(model.layers[model.layers.length - 1]);    
     
-    const layer = tf.layers.conv2d({ filters: 5*(numClasses+5), rank:2, kernelSize: [1,1], strides: [1,1], padding: 'same',
-        kernelRegularizer: tf.regularizers.l1l2({ l1: 0, l2: 0.0005000000237487257, hasL1: false, hasL2: true })
+    // const newLayer = tf.layers.conv2d({ filters: filters, rank:2, kernelSize: [1,1], strides: [1,1], padding: 'same',
+    //     kernelRegularizer: tf.regularizers.l1l2({ l1: 0, l2: 0.0005000000237487257, hasL1: false, hasL2: true })
+    // });
+    
+    const oldLayer = model.getLayer("conv2d_9");
+    const { name, kernelSize, activation, padding, strides, kernelRegularizer, kernelInitializer } = oldLayer.getConfig();
+    const newLayer = tf.layers.conv2d({
+        name: name,
+        filters: filters,
+        kernelSize: kernelSize,
+        activation: activation,
+        padding: padding,
+        strides: strides,
+        kernelRegularizer: kernelRegularizer,
+        kernelInitializer: kernelInitializer
     });
-    const newModel = tf.model({inputs: model.inputs, outputs: layer.apply(model.output)});
 
+    const transferLayer = model.layers[model.layers.length - 2].output;    
+    const newOutputs = newLayer.apply(transferLayer);
+    const newModel = tf.model({inputs: model.inputs, outputs: newOutputs});
+    
     console.log(newModel.layers[newModel.layers.length - 1]); 
-
     newModel.compile({
         optimizer:  'adam',
         //loss: 'meanSquaredError',
