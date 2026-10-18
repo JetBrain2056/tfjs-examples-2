@@ -13,199 +13,246 @@ function dateNow() {
     let date = new Date(Date.now() - (new Date()).getTimezoneOffset() * 60000);
     return date.toISOString().slice(0, 19).replace('T', ' ');
 }
-function trainModel() {
 
-    //chatGPT version////    
+function createYoloModel(numClasses) {
+    
+    const model = tf.sequential();           
 
-    function yoloLayers() {
-        //const anchors = [1.08, 1.19, 3.42, 4.41, 6.63, 11.38, 9.42, 5.11, 16.62, 10.52];        
-        //const numAnchors = anchors.length / 2;
-
-        const model = tf.sequential();
-
-        model.add(tf.layers.conv2d({ filters: 16, kernelSize: 3, strides: 1, inputShape: [416, 416, 3], padding: 'same', activation: 'LeakyReLU' }));
-        model.add(tf.layers.maxPooling2d({ poolSize: [2, 2], strides: [2, 2], padding: 'same' }));
-        model.add(tf.layers.conv2d({ filters: 32, kernelSize: 3, strides: 1, padding: 'same', activation: 'LeakyReLU' }));
-        model.add(tf.layers.maxPooling2d({ poolSize: [2, 2], strides: [2, 2], padding: 'same' }));
-        model.add(tf.layers.conv2d({ filters: 64, kernelSize: 3, strides: 1, padding: 'same', activation: 'LeakyReLU' }));
-        model.add(tf.layers.maxPooling2d({ poolSize: [2, 2], strides: [2, 2], padding: 'same' }));
-        model.add(tf.layers.conv2d({ filters: 128, kernelSize: 3, strides: 1, padding: 'same', activation: 'LeakyReLU' }));
-        model.add(tf.layers.maxPooling2d({ poolSize: [2, 2], strides: [2, 2], padding: 'same' }));
-        model.add(tf.layers.conv2d({ filters: 256, kernelSize: 3, strides: 1, padding: 'same', activation: 'LeakyReLU' }));
-        model.add(tf.layers.maxPooling2d({ poolSize: [2, 2], strides: [2, 2], padding: 'same' }));
-        model.add(tf.layers.conv2d({ filters: 512, kernelSize: 3, strides: 1, padding: 'same', activation: 'LeakyReLU' }));
-        model.add(tf.layers.maxPooling2d({ poolSize: [2, 2], strides: [1, 1], padding: 'same' }));
-        model.add(tf.layers.conv2d({ filters: 1024, kernelSize: 3, strides: 1, padding: 'same', activation: 'LeakyReLU' }));
-        model.add(tf.layers.conv2d({ filters: 1024, kernelSize: 3, strides: 1, padding: 'same', activation: 'LeakyReLU' }));
-        model.add(tf.layers.conv2d({ filters: 40, kernelSize: 1, strides: 1, padding: 'same' }));
-
-        return model;
-    }
-
-    // Создание экземпляра модели
-    model = yoloLayers();
-
-    // Компиляция модели
-    model.compile({ loss: 'binaryCrossentropy', optimizer: 'adam' , metrics: ['accuracy'],});
-
-    // Вывод структуры модели
-    model.summary();
+    // Первый путь Darknet
+    model.add(tf.layers.conv2d({
+        filters: 16, 
+        kernelSize: 3, 
+        strides: 1, 
+        inputShape: [416, 416, 3], 
+        padding: 'same', 
+        activation: 'leakyrelu',
+        alpha: 0.1
+    }));
+    model.add(tf.layers.maxPooling2d({ poolSize: [2, 2], strides: [2, 2], padding: 'same' }));
+    
+    model.add(tf.layers.conv2d({
+        filters: 32, 
+        kernelSize: 3, 
+        strides: 1, 
+        padding: 'same', 
+        activation: 'leakyrelu',
+        alpha: 0.1
+    }));
+    model.add(tf.layers.maxPooling2d({ poolSize: [2, 2], strides: [2, 2], padding: 'same' }));
+    
+    model.add(tf.layers.conv2d({
+        filters: 64, 
+        kernelSize: 3, 
+        strides: 1, 
+        padding: 'same', 
+        activation: 'leakyrelu',
+        alpha: 0.1
+    }));
+    model.add(tf.layers.maxPooling2d({ poolSize: [2, 2], strides: [2, 2], padding: 'same' }));
+    
+    model.add(tf.layers.conv2d({
+        filters: 128, 
+        kernelSize: 3, 
+        strides: 1, 
+        padding: 'same', 
+        activation: 'leakyrelu',
+        alpha: 0.1
+    }));
+    model.add(tf.layers.maxPooling2d({ poolSize: [2, 2], strides: [2, 2], padding: 'same' }));
+    
+    model.add(tf.layers.conv2d({
+        filters: 256, 
+        kernelSize: 3, 
+        strides: 1, 
+        padding: 'same', 
+        activation: 'leakyrelu',
+        alpha: 0.1
+    }));
+    model.add(tf.layers.maxPooling2d({ poolSize: [2, 2], strides: [2, 2], padding: 'same' }));
+    
+    // Второй путь
+    model.add(tf.layers.conv2d({
+        filters: 512, 
+        kernelSize: 3, 
+        strides: 1, 
+        padding: 'same', 
+        activation: 'leakyrelu',
+        alpha: 0.1
+    }));
+    model.add(tf.layers.maxPooling2d({ poolSize: [2, 2], strides: [1, 1], padding: 'same' }));
+    
+    model.add(tf.layers.conv2d({
+        filters: 1024, 
+        kernelSize: 3, 
+        strides: 1, 
+        padding: 'same', 
+        activation: 'leakyrelu',
+        alpha: 0.1
+    }));
+    
+    model.add(tf.layers.conv2d({
+        filters: 1024, 
+        kernelSize: 3, 
+        strides: 1, 
+        padding: 'same', 
+        activation: 'leakyrelu',
+        alpha: 0.1
+    }));
+    
+    // Выходной слой
+    const numAnchors = 5; // стандартное количество анкоров для YOLO-tiny
+    const filters = numAnchors * (numClasses + 5);
+    
+    model.add(tf.layers.conv2d({
+        filters: filters, 
+        kernelSize: 1, 
+        strides: 1, 
+        padding: 'same', 
+        activation: 'linear'
+    }));
 
     return model;
+}
+        
+async function calculateImageFeatures(_image) {
+        const imageSize = 416;
+        
+        const bufferT  = tf.node.decodeImage(_image);           
+        const resizedT = tf.image.resizeNearestNeighbor(bufferT, [imageSize, imageSize]);
+        const imageT   = await resizedT.div(tf.scalar(255.0)).expandDims();
+
+        return imageT;    
+}
+
+function makeTargetTensor(imgs, gridSize, numAnchors, numClasses) {
+    const filters = numAnchors*(numClasses+5);
+    const targets = [];
+
+    for (const c of imgs) {
+    
+        //Normalize in 0~1:
+        const bx = (c.xmin + c.xmax) / 2 / 416;
+        const by = (c.ymin + c.ymax) / 2 / 416;
+        const bw = (c.xmax - c.xmin) / 416;
+        const bh = (c.ymax - c.ymin) / 416;
+            
+        const gx = Math.floor(bx * gridSize);
+        const gy = Math.floor(by * gridSize);
+        
+        const data = new Float32Array(gridSize * gridSize * filters).fill(0);
+
+        const baseIdx = (gy * gridSize +gx) * filters;
+        const anchorsIdx = 0;
+        const offset = anchorsIdx * (numClasses + 5);
+
+        data[baseIdx + offset] = bx - gx / gridSize;
+        data[baseIdx + offset + 1] = by - gy / gridSize;
+        data[baseIdx + offset + 2] = bw;
+        data[baseIdx + offset + 3] = bh;
+        data[baseIdx + offset + 4] = 1;
+        data[baseIdx + offset + 5] = 1;
+
+        const tensor = tf.tensor(data, [1, gridSize, gridSize,filters], 'float32');
+        targets.push(tensor);
+    }
+
+    const concat = tf.concat(targets, 0);
+    return concat;
 
 }
+
 exports.app = async function(req, res) {
     if (!req.body) return res.sendStatus(400);
     res.render('index.html');
 }
+
 exports.tfTrain = async function(req,res) {
     console.log(dateNow(),'>>tfTrain()...');
 
     if (!req.body) return res.sendStatus(400);
 
-      //v2 yolo_tiny
-    const numClasses = 1;   
+    //v2 yolo_tiny
+    const numClasses = 1;
+    const gridSize = 13;
+    const numAnchors = 5;
     const ANCHORS = [0.573, 0.677, 1.87, 2.06, 3.34, 5.47, 7.88, 3.53, 9.77, 9.17]; 
-    const filters = ANCHORS.length/2*(numClasses+5);
-    // const filters    = numClasses+5;
+    const filters = numAnchors * (numClasses + 5);
 
-    model = await tf.loadLayersModel(URL);  
-    model.summary();
-     
-    //model.predict(tf.zeros([1, 416, 416, 3]));
-
-     //Freeze the layers of the pre-trained model except for the last few
-     for (let i = 0; i < model.layers.length; i++) {
-        model.layers[i].trainable = false;
-    } 
-           
-    model.layers[model.layers.length - 1].trainable = true; 
+    let baseModel;
+    try {
+        baseModel = await tf.loadLayersModel(URL);
+    } catch (e) {
+        console.error(e.message);
+        baseModel = createYoloModel();
+    }  
         
-    // console.log(model.layers[model.layers.length - 1]); 
+    baseModel.summary();
+     
+     //Freeze the layers of the pre-trained model except for the last few    
+    baseModel.layers.forEach((layer , i) => {
+        layer.trainable = i === baseModel.layers.length - 1;
+    });      
     
-    const oldLayer = model.getLayer("conv2d_9");
-    const { name, kernelSize, activation, padding, strides, kernelRegularizer, kernelInitializer } = oldLayer.getConfig();
-    const newLayer = tf.layers.conv2d({
-        name: name,
+    const lastLayerConfig = baseModel.getLayer(baseModel.layers.length - 1).getConfig();
+    const newLastLayer = tf.layers.conv2d({
+        name: lastLayerConfig.name,
         filters: filters,
-        kernelSize: kernelSize,
-        activation: activation,
-        padding: padding,
-        strides: strides,
-        kernelRegularizer: kernelRegularizer,
-        kernelInitializer: kernelInitializer
+        kernelSize: lastLayerConfig.kernelSize,
+        activation: lastLayerConfig.activation,
+        padding: lastLayerConfig.padding,
+        strides: lastLayerConfig.strides,
+        kernelRegularizer: lastLayerConfig.kernelRegularizer,
+        kernelInitializer: lastLayerConfig.kernelInitializer
     });
 
-    const transferLayer = model.layers[model.layers.length - 2].output;    
-    const newOutputs = newLayer.apply(transferLayer);
-    let newModel = tf.model({inputs: model.inputs, outputs: newOutputs});
+    const transferOutput = baseModel.layers[baseModel.layers.length - 2].output;    
+    const newOutputs = newLastLayer.apply(transferOutput);
+    const newModel = tf.model({inputs: baseModel.inputs, outputs: newOutputs});
     
-    // console.log(newModel.layers[newModel.layers.length - 1]); 
-    
-    let inputsAsTensor, targetTensor;
+     // Компиляция модели
+    newModel.compile({ loss: 'meanSquaredError', optimizer: 'adam' , metrics: ['accuracy'],});
 
-    let trainingDataInputs  = [];
-    let trainingDataOutputs = [];
+    // Вывод структуры модели
+    newModel.summary();
+   
+    //demo for 1 classes
+    const imgList = [
+        {class:0, xmin:72, ymin:69, xmax:110, ymax:183, name:'train416.jpg'},
+        {class:0, xmin:115, ymin:60, xmax:149, ymax:166, name:'train416.jpg'},  
+        {class:0, xmin:150, ymin:69, xmax:184, ymax:184, name:'train416.jpg'},
+        {class:0, xmin:187, ymin:88, xmax:219, ymax:187, name:'train416.jpg'},
+        {class:0, xmin:221, ymin:90, xmax:256, ymax:187, name:'train416.jpg'},
+        {class:0, xmin:257, ymin:81, xmax:289, ymax:170, name:'train416.jpg'},
+        {class:0, xmin:295, ymin:82, xmax:330, ymax:180, name:'train416.jpg'}
+    ];
 
-    let bufferT, resizedT, imageT, imageFeatures;
-
-    async function calculateImageFeatures(_image) {
-        const imageSize = 416;
-        
-        bufferT  = tf.node.decodeImage(_image);           
-        resizedT = tf.image.resizeNearestNeighbor(bufferT, [imageSize, imageSize]);
-        imageT   = await resizedT.div(tf.scalar(255.0)).expandDims();
-
-        return imageT;    
-    }
-    
-    //demo for 1-3 classes
-    let img = [];
-    img[0] = {class:0, xmin:72, ymin:69, xmax:110, ymax:183, name:'train416.jpg'}
-    img[1] = {class:0, xmin:115, ymin:60, xmax:149, ymax:166, name:'train416.jpg'}  
-    img[2] = {class:0, xmin:150, ymin:69, xmax:184, ymax:184, name:'train416.jpg'}
-    // img[3] = {class:1, xmin:187, ymin:88, xmax:219, ymax:187, name:'train416.jpg'}
-    // img[4] = {class:1, xmin:221, ymin:90, xmax:256, ymax:187, name:'train416.jpg'}
-    // img[5] = {class:2, xmin:257, ymin:81, xmax:289, ymax:170, name:'train416.jpg'}
-    // img[6] = {class:2, xmin:295, ymin:82, xmax:330, ymax:180, name:'train416.jpg'}
-
-    for (let i of img) {
-        const trainImage = fs.readFileSync('./app/images/'+i.name); 
-        imageFeatures = await calculateImageFeatures(trainImage); 
-        trainingDataInputs.push(imageFeatures);    
+    const inputs = [];
+    for (const i of imgList) {
+        const buffer = fs.readFileSync('./app/images/'+i.name); 
+        const imageTensor = await calculateImageFeatures(buffer); 
+        inputs.push(imageTensor);    
     }
     
     // console.log(trainingDataInputs);
     
-    inputsAsTensor  = await tf.concat(trainingDataInputs);
-            
-    zerosTensor = tf.zeros([1,13,13,filters]);         
-    
-    for (let c of img) {
-        
-        outputData = zerosTensor.dataSync();
-
-        //Normalize in 0~1:
-        const x1 = c.xmin/416;
-        const y1 = c.ymin/416;
-        const x2 = c.xmax/416;
-        const y2 = c.ymax/416;
-
-        bx = x1 + (x2-x1)/2
-        by = y1 + (y2-y1)/2
-        bw = x2 - x1
-        bh = y2 - y1
-            
-        const probability = 1;     
-        
-        for (xg = 0; xg<13; xg++) {
-            for (yg = 0; yg<13; yg++) {                                  
-                for (p = 0; p<5; p++) {
-                    //The center object of the trained image                                    
-                    if (xg===Math.round(bx*13)&&yg===Math.round(by*13)&&p===Math.round(bw*5/2+bh*5/2)) {  
-                    
-                        // Transfer to 0~1 corresponding to each grid cell:    
-                        const idx = xg*(numClasses+5)*5 + yg*(numClasses+5)*5                           
-
-                        outputData[idx+p]   = bx - 32/416*xg
-                        outputData[idx+1+p] = by - 32/416*yg                         
-                        outputData[idx+2+p] = bw
-                        outputData[idx+3+p] = bh
-                        outputData[idx+4+p] = probability
-                        outputData[idx+5+p+c.class] = 1
-
-                        console.log(Math.round(bx*13), Math.round(by*13), Math.round(bw*5/2+bh*5/2));   
-                        console.log(bx, by, bw, bh, c.class);                   
-                        console.log(bx - 32/416*xg, by - 32/416*yg);   
-                    }                    
-                }                
-            }
-        }                                  
-           
-        console.log(outputData)
-
-        tfpixl = tf.tensor(outputData, [1,13,13,filters], 'float32');        
-        trainingDataOutputs.push(tfpixl);        
-    }
-        
-    targetTensor = await tf.concat(trainingDataOutputs);       
-    console.log(targetTensor);   
-            
-    newModel.compile({
-        optimizer:  tf.train.adam(),
-        //loss: 'meanSquaredError',
-        loss: 'binaryCrossentropy',        
-        metrics: ['accuracy'],
-    });    
+    const inputsAsTensor  = tf.concat(inputs, 0);
+  
+    const targetTensor = makeTargetTensor(imgList, gridSize,numAnchors,numClasses);   
+    console.log(targetTensor);      
 
     newModel.summary();
     
-    //const newModel = trainModel();
+    
     await newModel.fit(inputsAsTensor, targetTensor, {
-        epochs: 10,
-        // shuffle: true,
-        // validationSplit: 0.2,
-        batchSize : 32, 
+        epochs: 50,
+        batchSize: 4,  // увеличенный размер батча
+        validationSplit: 0.2,
+        callbacks: {
+            onEpochEnd: (epoch, logs) => {
+                console.log(`Эпоха ${epoch}: loss = ${logs.loss}`);
+            }
+        },
+        optimizer: tf.train.adam(0.001)  // настройка оптимизатора
     });
 
     inputsAsTensor.dispose();
