@@ -129,12 +129,14 @@ function makeTargetTensor(imgs, gridSize, numAnchors, numClasses) {
     const targets = [];
 
     for (const c of imgs) {
-    
-        //Normalize in 0~1:
         const bx = (c.xmin + c.xmax) / 2 / 416;
         const by = (c.ymin + c.ymax) / 2 / 416;
         const bw = (c.xmax - c.xmin) / 416;
         const bh = (c.ymax - c.ymin) / 416;
+
+        if (bx < 0 || by < 0 || bx >= gridSize || by >= gridSize) {
+            continue; // пропустить некорректные координаты
+        }
             
         const gx = Math.floor(bx * gridSize);
         const gy = Math.floor(by * gridSize);
@@ -147,10 +149,12 @@ function makeTargetTensor(imgs, gridSize, numAnchors, numClasses) {
 
         data[baseIdx + offset] = bx - gx / gridSize;
         data[baseIdx + offset + 1] = by - gy / gridSize;
-        data[baseIdx + offset + 2] = bw;
-        data[baseIdx + offset + 3] = bh;
-        data[baseIdx + offset + 4] = 1;
-        data[baseIdx + offset + 5] = 1;
+        data[baseIdx + offset + 2] = Math.log(bw);
+        data[baseIdx + offset + 3] = Math.log(bh);
+        data[baseIdx + offset + 4] = 1; // confidence
+
+        // Установка класса
+        data[baseIdx + offset + 5 + c.class] = 1;
 
         const tensor = tf.tensor(data, [1, gridSize, gridSize,filters], 'float32');
         targets.push(tensor);
@@ -172,7 +176,7 @@ exports.tfTrain = async function(req,res) {
     if (!req.body) return res.sendStatus(400);
 
     //v2 yolo_tiny
-    const numClasses = 1;
+    const numClasses = 3;
     const gridSize = 13;
     const numAnchors = 5;
     const ANCHORS = [0.573, 0.677, 1.87, 2.06, 3.34, 5.47, 7.88, 3.53, 9.77, 9.17]; 
@@ -183,7 +187,7 @@ exports.tfTrain = async function(req,res) {
         baseModel = await tf.loadLayersModel(URL);
     } catch (e) {
         console.error(e.message);
-        baseModel = createYoloModel();
+        baseModel = createYoloModel(numClasses);
     }  
         
     baseModel.summary();
@@ -215,15 +219,15 @@ exports.tfTrain = async function(req,res) {
     // Вывод структуры модели
     newModel.summary();
    
-    //demo for 1 classes
+    //demo for 3 classes
     const imgList = [
         {class:0, xmin:72, ymin:69, xmax:110, ymax:183, name:'train416.jpg'},
         {class:0, xmin:115, ymin:60, xmax:149, ymax:166, name:'train416.jpg'},  
         {class:0, xmin:150, ymin:69, xmax:184, ymax:184, name:'train416.jpg'},
-        {class:0, xmin:187, ymin:88, xmax:219, ymax:187, name:'train416.jpg'},
-        {class:0, xmin:221, ymin:90, xmax:256, ymax:187, name:'train416.jpg'},
-        {class:0, xmin:257, ymin:81, xmax:289, ymax:170, name:'train416.jpg'},
-        {class:0, xmin:295, ymin:82, xmax:330, ymax:180, name:'train416.jpg'}
+        {class:1, xmin:187, ymin:88, xmax:219, ymax:187, name:'train416.jpg'},
+        {class:1, xmin:221, ymin:90, xmax:256, ymax:187, name:'train416.jpg'},
+        {class:2, xmin:257, ymin:81, xmax:289, ymax:170, name:'train416.jpg'},
+        {class:2, xmin:295, ymin:82, xmax:330, ymax:180, name:'train416.jpg'}
     ];
 
     const inputs = [];
@@ -250,9 +254,16 @@ exports.tfTrain = async function(req,res) {
         callbacks: {
             onEpochEnd: (epoch, logs) => {
                 console.log(`Эпоха ${epoch}: loss = ${logs.loss}`);
+                if (logs.loss < 0.01) {
+                    return true; // остановить обучение
+                }
             }
         },
-        optimizer: tf.train.adam(0.001)  // настройка оптимизатора
+
+        optimizer: tf.train.adam({
+            learningRate: 0.001,
+            decay: 0.0005
+        }),
     });
 
     inputsAsTensor.dispose();
